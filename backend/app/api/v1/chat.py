@@ -70,11 +70,11 @@ async def chat_stream(request: ChatRequest, user: dict = Depends(get_current_use
             # Send done event with metadata
             yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'agent_type': request.agent_type or 'master'})}\n\n"
 
-            # Save conversation (non-blocking)
+            # Save conversation (usa admin client para bypass RLS no server-side)
             try:
-                from app.database.supabase_client import get_supabase
+                from app.database.supabase_client import get_supabase_admin
 
-                supabase = get_supabase()
+                supabase = get_supabase_admin()
                 existing = (
                     supabase.table(TABLES["agent_conversations"])
                     .select("messages")

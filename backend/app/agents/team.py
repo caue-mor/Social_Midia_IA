@@ -120,10 +120,10 @@ async def get_team_response(
         logger.error(f"Team execution error: {e}")
         response_text = "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente em alguns instantes."
 
-    # Salva conversa no Supabase (non-blocking, fallback para quando AGNO storage nao esta ativo)
+    # Salva conversa no Supabase (usa admin client para bypass RLS no server-side)
     try:
-        from app.database.supabase_client import get_supabase
-        supabase = get_supabase()
+        from app.database.supabase_client import get_supabase_admin
+        supabase = get_supabase_admin()
 
         existing = supabase.table(TABLES["agent_conversations"]).select("messages").eq("id", conversation_id).maybe_single().execute()
         messages = existing.data["messages"] if existing and existing.data else []
