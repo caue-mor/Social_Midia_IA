@@ -64,7 +64,15 @@ async def list_events(
     if platform:
         query = query.eq("platform", platform)
     if month:
-        query = query.gte("scheduled_at", f"{month}-01").lt("scheduled_at", f"{month}-32")
+        # Calcula primeiro dia do mes seguinte para range correto
+        year, mo = month.split("-")
+        next_mo = int(mo) + 1
+        next_year = int(year)
+        if next_mo > 12:
+            next_mo = 1
+            next_year += 1
+        next_month = f"{next_year}-{next_mo:02d}-01"
+        query = query.gte("scheduled_at", f"{month}-01").lt("scheduled_at", next_month)
     result = query.order("scheduled_at").execute()
     return {"events": result.data}
 
