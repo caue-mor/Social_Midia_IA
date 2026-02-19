@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
+import { useAppStore } from "@/stores/app-store";
 
 interface Message {
   role: "user" | "assistant";
@@ -25,7 +26,13 @@ function getWsUrl(): string {
 }
 
 export function useChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const messages = useAppStore((s) => s.chatMessages);
+  const addChatMessage = useAppStore((s) => s.addChatMessage);
+  const setChatMessages = useAppStore((s) => s.setChatMessages);
+  const chatConversationId = useAppStore((s) => s.chatConversationId);
+  const setChatConversationId = useAppStore((s) => s.setChatConversationId);
+  const clearChatStore = useAppStore((s) => s.clearChat);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -33,7 +40,6 @@ export function useChat() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const retriesRef = useRef(0);
-  const conversationIdRef = useRef<string | null>(null);
   const pendingResolveRef = useRef<((value: void) => void) | null>(null);
   const isUnmountedRef = useRef(false);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,17 +75,14 @@ export function useChat() {
           if (data.data) {
             // Update conversation ID from server response
             if (data.data.conversation_id) {
-              conversationIdRef.current = data.data.conversation_id;
+              setChatConversationId(data.data.conversation_id);
             }
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "assistant",
-                content: data.data.response || "Erro ao processar.",
-                timestamp: new Date(),
-                agent_type: data.data.agent_type,
-              },
-            ]);
+            addChatMessage({
+              role: "assistant",
+              content: data.data.response || "Erro ao processar.",
+              timestamp: new Date(),
+              agent_type: data.data.agent_type,
+            });
           }
           setIsLoading(false);
           if (pendingResolveRef.current) {
@@ -89,14 +92,11 @@ export function useChat() {
           break;
 
         case "error":
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: data.message || "Erro desconhecido.",
-              timestamp: new Date(),
-            },
-          ]);
+          addChatMessage({
+            role: "assistant",
+            content: data.message || "Erro desconhecido.",
+            timestamp: new Date(),
+          });
           setIsLoading(false);
           setIsTyping(false);
           if (pendingResolveRef.current) {
@@ -237,8 +237,9 @@ export function useChat() {
         pendingResolveRef.current = resolve;
 
         const payload: Record<string, unknown> = { message: content };
-        if (conversationIdRef.current) {
-          payload.conversation_id = conversationIdRef.current;
+        const currentConversationId = useAppStore.getState().chatConversationId;
+        if (currentConversationId) {
+          payload.conversation_id = currentConversationId;
         }
 
         wsRef.current.send(JSON.stringify(payload));
@@ -252,8 +253,9 @@ export function useChat() {
     async (content: string) => {
       try {
         const body: Record<string, unknown> = { message: content };
-        if (conversationIdRef.current) {
-          body.conversation_id = conversationIdRef.current;
+        const currentConversationId = useAppStore.getState().chatConversationId;
+        if (currentConversationId) {
+          body.conversation_id = currentConversationId;
         }
 
         const res = await fetch("/api/chat", {
@@ -269,30 +271,24 @@ export function useChat() {
         const data = await res.json();
 
         if (data.conversation_id) {
-          conversationIdRef.current = data.conversation_id;
+          setChatConversationId(data.conversation_id);
         }
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: data.response || "Erro ao processar.",
-            timestamp: new Date(),
-            agent_type: data.agent_type,
-          },
-        ]);
+        addChatMessage({
+          role: "assistant",
+          content: data.response || "Erro ao processar.",
+          timestamp: new Date(),
+          agent_type: data.agent_type,
+        });
       } catch {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: "Erro de conexao. Tente novamente.",
-            timestamp: new Date(),
-          },
-        ]);
+        addChatMessage({
+          role: "assistant",
+          content: "Erro de conexao. Tente novamente.",
+          timestamp: new Date(),
+        });
       }
     },
-    []
+    [addChatMessage, setChatConversationId]
   );
 
   // Main send function: tries WebSocket first, falls back to HTTP
@@ -304,10 +300,7 @@ export function useChat() {
       setIsLoading(true);
 
       // Add user message immediately
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: trimmed, timestamp: new Date() },
-      ]);
+      addChatMessage({ role: "user", content: trimmed, timestamp: new Date() });
 
       const wsOpen =
         wsRef.current && wsRef.current.readyState === WebSocket.OPEN;
@@ -322,21 +315,20 @@ export function useChat() {
       setIsLoading(false);
       setIsTyping(false);
     },
-    [isLoading, sendViaWs, sendViaHttp]
+    [isLoading, sendViaWs, sendViaHttp, addChatMessage]
   );
 
   const clearMessages = useCallback(() => {
-    setMessages([]);
-    conversationIdRef.current = null;
-  }, []);
+    clearChatStore();
+  }, [clearChatStore]);
 
-  const loadConversation = useCallback((conversationId: string, messages: Message[]) => {
-    conversationIdRef.current = conversationId;
-    setMessages(messages);
-  }, []);
+  const loadConversation = useCallback((conversationId: string, msgs: Message[]) => {
+    setChatConversationId(conversationId);
+    setChatMessages(msgs);
+  }, [setChatConversationId, setChatMessages]);
 
   const getCurrentConversationId = useCallback(() => {
-    return conversationIdRef.current;
+    return useAppStore.getState().chatConversationId;
   }, []);
 
   return {

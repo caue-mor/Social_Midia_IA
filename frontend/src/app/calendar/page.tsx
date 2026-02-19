@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAppStore } from "@/stores/app-store";
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
@@ -35,7 +36,8 @@ interface CalendarEvent {
 }
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const currentDate = useAppStore((s) => s.calendarDate);
+  const setCurrentDate = useAppStore((s) => s.setCalendarDate);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -142,12 +144,44 @@ export default function CalendarPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ period: "weekly", platforms: ["instagram", "youtube", "tiktok", "linkedin"] }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setPlanResult(data.response || "Plano gerado com sucesso. Recarregue para ver os eventos.");
-        fetchEvents();
-      } else {
+
+      if (!res.ok || !res.body) {
         setPlanResult("Erro ao gerar plano editorial.");
+        setGenerating(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") break;
+
+          try {
+            const event = JSON.parse(payload);
+            if (event.type === "progress") {
+              setPlanResult(event.message);
+            } else if (event.type === "complete") {
+              setPlanResult(event.data?.response || "Plano gerado com sucesso. Recarregue para ver os eventos.");
+              fetchEvents();
+            } else if (event.type === "error") {
+              setPlanResult(`Erro: ${event.message}`);
+            }
+          } catch {
+            // ignore malformed events
+          }
+        }
       }
     } catch {
       setPlanResult("Erro de conexao ao gerar plano.");

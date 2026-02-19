@@ -1,5 +1,9 @@
+import asyncio
+import json
 import logging
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 from app.dependencies import get_current_user
@@ -123,12 +127,8 @@ async def delete_event(
 # --- AI Plan Generation ---
 
 
-@router.post("/generate-plan")
-async def generate_plan(
-    request: GeneratePlanRequest,
-    user: dict = Depends(get_current_user),
-):
-    from app.agents.team import get_team_response
+def _build_plan_prompt(request: GeneratePlanRequest, user: dict) -> str:
+    """Build the editorial plan prompt. Shared by both sync and streaming endpoints."""
     from app.database.supabase_client import get_supabase_admin
     from datetime import date
 
@@ -177,6 +177,19 @@ async def generate_plan(
     if request.additional_instructions:
         prompt += f" Instrucoes adicionais: {request.additional_instructions}"
 
+    return prompt
+
+
+@router.post("/generate-plan")
+async def generate_plan(
+    request: GeneratePlanRequest,
+    user: dict = Depends(get_current_user),
+):
+    from app.agents.team import get_team_response
+
+    prompt = _build_plan_prompt(request, user)
+    platforms_str = ", ".join(request.platforms)
+
     result = await get_team_response(
         message=prompt,
         user_id=user["id"],
@@ -187,6 +200,98 @@ async def generate_plan(
         },
     )
     return result
+
+
+@router.post("/generate-plan/stream")
+async def generate_plan_stream(
+    request: GeneratePlanRequest,
+    user: dict = Depends(get_current_user),
+):
+    """SSE streaming endpoint for editorial plan generation.
+
+    Sends periodic progress heartbeats while the AI team works,
+    then delivers the final result or error. This avoids the 60s
+    gateway timeout on Vercel/serverless environments.
+    """
+    from app.agents.team import get_team_response
+
+    prompt = _build_plan_prompt(request, user)
+    platforms_str = ", ".join(request.platforms)
+    conversation_id = str(uuid.uuid4())
+
+    async def event_stream():
+        # Send initial progress
+        yield f"data: {json.dumps({'type': 'progress', 'message': 'Iniciando geracao do plano editorial...'})}\n\n"
+
+        # Holders for the background task result
+        result_holder: dict = {}
+        error_holder: dict = {}
+        done_event = asyncio.Event()
+
+        async def run_team():
+            try:
+                result = await get_team_response(
+                    message=prompt,
+                    user_id=user["id"],
+                    conversation_id=conversation_id,
+                    agent_type="calendar_planner",
+                    context={
+                        "period": request.period,
+                        "platforms": platforms_str,
+                    },
+                )
+                result_holder["data"] = result
+            except Exception as e:
+                error_holder["error"] = str(e)
+            finally:
+                done_event.set()
+
+        # Run team in background
+        task = asyncio.create_task(run_team())
+
+        # Send heartbeats every 5 seconds while waiting
+        progress_messages = [
+            "Analisando tendencias e melhores horarios...",
+            "Pesquisando conteudo relevante para suas plataformas...",
+            "Distribuindo conteudo no calendario...",
+            "Otimizando horarios de postagem...",
+            "Finalizando plano editorial...",
+            "Quase pronto, revisando o plano...",
+            "Ajustando detalhes finais...",
+        ]
+        msg_index = 0
+
+        while not done_event.is_set():
+            try:
+                await asyncio.wait_for(done_event.wait(), timeout=5.0)
+                break
+            except asyncio.TimeoutError:
+                msg = progress_messages[min(msg_index, len(progress_messages) - 1)]
+                yield f"data: {json.dumps({'type': 'progress', 'message': msg})}\n\n"
+                msg_index += 1
+
+        # Ensure the task is fully awaited to propagate any unhandled exceptions
+        await task
+
+        # Send final result
+        if "error" in error_holder:
+            yield f"data: {json.dumps({'type': 'error', 'message': error_holder['error']})}\n\n"
+        elif "data" in result_holder:
+            yield f"data: {json.dumps({'type': 'complete', 'data': result_holder['data']})}\n\n"
+        else:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Resultado vazio'})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # --- Automation Rules ---

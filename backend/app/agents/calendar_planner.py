@@ -3,6 +3,7 @@ from agno.models.openai import OpenAIResponses
 from agno.tools.duckduckgo import DuckDuckGoTools
 from app.tools.supabase_tools import get_supabase_tools
 from app.tools.memory_tools import get_memory_tools
+from app.tools.learning_tools import get_learning_tools
 from app.agents.memory_config import create_db, create_memory_manager
 
 
@@ -18,6 +19,13 @@ def create_calendar_planner() -> Agent:
             "Use para planejamento de postagens, datas, frequencia e automacao de publicacao."
         ),
         instructions=[
+            # Aprendizado
+            "REGRA #0 — APRENDIZADO: ANTES de gerar qualquer plano, use as ferramentas de aprendizado: "
+            "1) Chame analyze_content_performance(user_id) para entender padroes de sucesso. "
+            "2) Chame get_engagement_insights(user_id) para comparar conteudo bom vs ruim. "
+            "3) Chame get_growth_trajectory(user_id) para ver tendencia de crescimento. "
+            "Use esses dados para fundamentar o plano editorial com evidencias reais.",
+
             # Autonomia total
             "REGRA #1 — AUTONOMIA TOTAL: NUNCA faca perguntas ao usuario. SEMPRE gere o plano completo automaticamente. "
             "Se nao souber o nicho do usuario, pesquise na internet tendencias gerais de redes sociais e crie um plano baseado nisso. "
@@ -77,7 +85,7 @@ def create_calendar_planner() -> Agent:
             "- Uma thread no LinkedIn pode virar: 1 carrossel no Instagram + 1 post no LinkedIn.",
             "- Indique no plano quais conteudos sao derivados de um conteudo pilar.",
         ],
-        tools=[*get_supabase_tools(), *get_memory_tools(), DuckDuckGoTools()],
+        tools=[*get_supabase_tools(), *get_memory_tools(), *get_learning_tools(), DuckDuckGoTools()],
         markdown=True,
         store_history_messages=True,
         add_history_to_context=True,

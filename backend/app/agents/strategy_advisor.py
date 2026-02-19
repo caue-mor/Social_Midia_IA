@@ -4,6 +4,7 @@ from agno.tools.duckduckgo import DuckDuckGoTools
 from app.tools.memory_tools import get_memory_tools
 from app.tools.supabase_tools import get_supabase_tools
 from app.tools.books_tools import get_books_tools
+from app.tools.learning_tools import get_learning_tools
 from app.agents.memory_config import create_db, create_memory_manager
 
 
@@ -14,6 +15,10 @@ def create_strategy_advisor() -> Agent:
         role="Consultor estrategico de redes sociais",
         description="Define estrategias de crescimento, posicionamento e branding para redes sociais. Use para consultoria estrategica e planejamento de longo prazo.",
         instructions=[
+            "REGRA #0 — APRENDIZADO: ANTES de dar qualquer conselho, use as ferramentas de aprendizado: "
+            "analyze_content_performance(user_id), get_engagement_insights(user_id), get_growth_trajectory(user_id). "
+            "Fundamente suas recomendacoes em dados reais do usuario.",
+
             "REGRA #1 — AUTONOMIA TOTAL: SEMPRE use suas ferramentas ANTES de responder. "
             "NUNCA faca perguntas ao usuario pedindo dados que voce pode buscar sozinho. "
             "Pesquise na internet, consulte o banco de dados, analise metricas — faca TUDO que estiver ao seu alcance. "
@@ -147,7 +152,7 @@ def create_strategy_advisor() -> Agent:
             "",
             "Responda SEMPRE em portugues brasileiro.",
         ],
-        tools=[*get_memory_tools(), *get_supabase_tools(), *get_books_tools(), DuckDuckGoTools()],
+        tools=[*get_memory_tools(), *get_supabase_tools(), *get_books_tools(), *get_learning_tools(), DuckDuckGoTools()],
         markdown=True,
         store_history_messages=True,
         add_history_to_context=True,
