@@ -1,9 +1,10 @@
 """Centralized Instagram credential resolution per user.
 
-Resolution order: DB per-user token -> env var fallback -> None
+Resolution order: context user_id -> explicit user_id -> env var fallback -> None
 """
 
 import logging
+import threading
 from datetime import datetime, timedelta, timezone
 
 from app.config import get_settings
@@ -12,15 +13,36 @@ from app.database.supabase_client import get_supabase_admin
 
 logger = logging.getLogger("agentesocial.token_manager")
 
+# Thread-local storage for current user context
+_context = threading.local()
+
+
+def set_current_user_id(user_id: str) -> None:
+    """Set the current user_id for this thread. Call before running agent."""
+    _context.user_id = user_id
+
+
+def get_current_user_id() -> str:
+    """Get the current user_id from thread-local context."""
+    return getattr(_context, "user_id", "")
+
+
+def clear_current_user_id() -> None:
+    """Clear the current user_id context."""
+    _context.user_id = ""
+
 
 def get_user_instagram_credentials(user_id: str = "") -> tuple[str, str] | None:
     """Resolve Instagram credentials for a user.
 
     Returns (access_token, account_id) or None.
-    Priority: DB per-user -> env var fallback.
+    Priority: explicit user_id -> context user_id -> env var fallback.
     """
-    if user_id:
-        creds = _get_credentials_from_db(user_id)
+    # Use explicit user_id, fallback to thread-local context
+    effective_user_id = user_id or get_current_user_id()
+
+    if effective_user_id:
+        creds = _get_credentials_from_db(effective_user_id)
         if creds:
             return creds
 

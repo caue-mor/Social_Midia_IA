@@ -98,6 +98,10 @@ async def get_team_response(
         conversation_id = str(uuid.uuid4())
 
     try:
+        # Set user context for Instagram tools to pick up automatically
+        from app.services.token_manager import set_current_user_id, clear_current_user_id
+        set_current_user_id(user_id)
+
         team = get_team()
 
         # Adiciona contexto ao prompt
@@ -119,6 +123,8 @@ async def get_team_response(
     except Exception as e:
         logger.error(f"Team execution error: {e}")
         response_text = "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente em alguns instantes."
+    finally:
+        clear_current_user_id()
 
     # Salva conversa no Supabase (usa admin client para bypass RLS no server-side)
     try:
