@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface SocialProfile {
@@ -37,6 +37,14 @@ const platformConfig: Record<string, { color: string; icon: string }> = {
 };
 
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Carregando...</div>}>
+      <SettingsContent />
+    </Suspense>
+  );
+}
+
+function SettingsContent() {
   const searchParams = useSearchParams();
   const [profiles, setProfiles] = useState<SocialProfile[]>([]);
   const [instagramStatus, setInstagramStatus] = useState<InstagramStatus>({ connected: false });
