@@ -18,6 +18,11 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
 
+  // Hide sidebar on auth pages
+  if (pathname.startsWith("/login") || pathname.startsWith("/signup")) {
+    return null;
+  }
+
   return (
     <aside className="w-64 border-r border-[var(--border)] bg-[var(--card)] flex flex-col">
       <div className="p-4 border-b border-[var(--border)]">
