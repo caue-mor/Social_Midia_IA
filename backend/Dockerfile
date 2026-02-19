@@ -18,5 +18,5 @@ COPY . .
 # Expoe porta
 EXPOSE 8000
 
-# Comando de inicializacao (shell form para Railway resolver $PORT)
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Comando de inicializacao — exec substitui sh, uvicorn vira PID 1
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
