@@ -3,6 +3,7 @@ from agno.models.openai import OpenAIResponses
 from app.tools.instagram_tools import get_instagram_tools
 from app.tools.trends_tools import get_trends_tools
 from app.tools.supabase_tools import get_supabase_tools
+from app.agents.memory_config import create_db, create_memory_manager
 
 
 def create_hashtag_hunter() -> Agent:
@@ -83,4 +84,9 @@ def create_hashtag_hunter() -> Agent:
             *get_supabase_tools(),
         ],
         markdown=True,
+        store_history_messages=True,
+        add_history_to_context=True,
+        num_history_runs=5,
+        db=create_db(),
+        memory_manager=create_memory_manager(),
     )

@@ -5,23 +5,24 @@ from agno.models.openai import OpenAIResponses
 from agno.team import Team
 
 from app.constants import TABLES
+from app.agents.memory_config import create_db, create_memory_manager
 
 logger = logging.getLogger("agentesocial.team")
 
 
-def _safe_create_agent(creator_fn, name: str):
-    """Safely create an agent with graceful degradation."""
+def _safe_create_sub_team(creator_fn, name: str):
+    """Safely create a sub-team with graceful degradation."""
     try:
         return creator_fn()
     except Exception as e:
-        logger.warning(f"Failed to create agent {name}: {e}")
+        logger.warning(f"Failed to create sub-team {name}: {e}")
         return Agent(
             name=name,
             model=OpenAIResponses(id="gpt-4.1-nano"),
-            role=f"Agente {name} (modo degradado)",
-            description=f"Agente {name} em modo limitado devido a erro de inicializacao.",
+            role=f"Sub-team {name} (modo degradado)",
+            description=f"Sub-team {name} em modo limitado devido a erro de inicializacao.",
             instructions=[
-                f"Voce e o agente {name} em modo limitado.",
+                f"Voce e o sub-team {name} em modo limitado.",
                 "Tente ajudar o usuario com base no seu conhecimento geral.",
                 "Responda em portugues brasileiro.",
             ],
@@ -30,50 +31,46 @@ def _safe_create_agent(creator_fn, name: str):
 
 
 def create_team() -> Team:
-    """Cria o time de agentes no modo Supervisor."""
-    from app.agents.master_orchestrator import create_master_agent
-    from app.agents.social_analyst import create_social_analyst
-    from app.agents.content_writer import create_content_writer
-    from app.agents.viral_tracker import create_viral_tracker
-    from app.agents.hashtag_hunter import create_hashtag_hunter
-    from app.agents.podcast_creator import create_podcast_creator
-    from app.agents.video_script_writer import create_video_script_writer
-    from app.agents.calendar_planner import create_calendar_planner
-    from app.agents.report_generator import create_report_generator
-    from app.agents.strategy_advisor import create_strategy_advisor
-    from app.agents.visual_designer import create_visual_designer
-    from app.agents.memory_agent import create_memory_agent
+    """Cria o team principal no modo Route com 4 sub-teams especializados."""
+    from app.agents.teams import (
+        create_content_factory,
+        create_analysis_squad,
+        create_media_production,
+        create_operations_team,
+    )
 
     members = [
-        _safe_create_agent(create_social_analyst, "Social Media Analyst"),
-        _safe_create_agent(create_content_writer, "Content Writer"),
-        _safe_create_agent(create_viral_tracker, "Viral Content Tracker"),
-        _safe_create_agent(create_hashtag_hunter, "Hashtag Hunter"),
-        _safe_create_agent(create_podcast_creator, "Podcast Creator"),
-        _safe_create_agent(create_video_script_writer, "Video Script Writer"),
-        _safe_create_agent(create_calendar_planner, "Calendar Planner"),
-        _safe_create_agent(create_report_generator, "Report Generator"),
-        _safe_create_agent(create_strategy_advisor, "Strategy Advisor"),
-        _safe_create_agent(create_visual_designer, "Visual Designer"),
-        _safe_create_agent(create_memory_agent, "Memory Agent"),
+        _safe_create_sub_team(create_content_factory, "Content Factory"),
+        _safe_create_sub_team(create_analysis_squad, "Analysis Squad"),
+        _safe_create_sub_team(create_media_production, "Media Production"),
+        _safe_create_sub_team(create_operations_team, "Operations"),
     ]
 
     team = Team(
         name="AgenteSocial Team",
-        mode="supervisor",
         model=OpenAIResponses(id="gpt-4.1-mini"),
         members=members,
         description="Time de IA especializado em gestao completa de redes sociais",
         instructions=[
-            "Voce e o orquestrador do AgenteSocial, um ecossistema de IA para gestao de redes sociais.",
-            "Analise a mensagem do usuario e delegue para o agente especialista mais adequado.",
-            "Sempre consulte o Memory Agent para contexto do usuario antes de responder.",
-            "Responda SEMPRE em portugues brasileiro.",
-            "Se a tarefa envolver multiplos agentes, coordene a execucao sequencial.",
+            "Voce e o roteador principal do AgenteSocial, um ecossistema de IA para gestao de redes sociais.",
+            "Analise a mensagem do usuario e ROTEIE para o sub-team MAIS adequado:",
+            "",
+            "ROTEAMENTO:",
+            "- Criar posts, legendas, carrosseis, textos, design visual, hashtags → Content Factory",
+            "- Analisar perfil, metricas, engajamento, tendencias, viral, estrategia → Analysis Squad",
+            "- Podcast, roteiro de video, Reels, TikTok, YouTube, show notes → Media Production",
+            "- Calendario editorial, relatorios, historico, preferencias, memoria → Operations",
+            "",
+            "REGRAS:",
+            "1. Sempre roteie para exatamente 1 sub-team por mensagem.",
+            "2. Se a mensagem envolver multiplas areas, priorize a principal.",
+            "3. Responda SEMPRE em portugues brasileiro.",
         ],
         show_members_responses=True,
         enable_agentic_memory=True,
         markdown=True,
+        db=create_db(),
+        memory_manager=create_memory_manager(),
     )
     return team
 
@@ -111,15 +108,19 @@ async def get_team_response(
         else:
             full_message = f"[Contexto: user_id={user_id}] {message}"
 
-        # Executa o team
-        response = team.run(full_message)
+        # Executa o team com session_id e user_id para persistencia nativa AGNO
+        response = team.run(
+            full_message,
+            session_id=conversation_id,
+            user_id=user_id,
+        )
         response_text = response.content if hasattr(response, "content") else str(response)
 
     except Exception as e:
         logger.error(f"Team execution error: {e}")
         response_text = "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente em alguns instantes."
 
-    # Salva conversa no Supabase (non-blocking)
+    # Salva conversa no Supabase (non-blocking, fallback para quando AGNO storage nao esta ativo)
     try:
         from app.database.supabase_client import get_supabase
         supabase = get_supabase()

@@ -1,5 +1,6 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAIResponses
+from app.agents.memory_config import create_db, create_memory_manager
 
 
 def create_master_agent() -> Agent:
@@ -33,4 +34,9 @@ def create_master_agent() -> Agent:
             "5. Seja conciso e acionavel nas respostas.",
         ],
         markdown=True,
+        store_history_messages=True,
+        add_history_to_context=True,
+        num_history_runs=5,
+        db=create_db(),
+        memory_manager=create_memory_manager(),
     )

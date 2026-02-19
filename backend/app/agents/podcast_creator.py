@@ -3,6 +3,7 @@ from agno.models.openai import OpenAIResponses
 from app.tools.audio_tools import get_audio_tools
 from app.tools.supabase_tools import get_supabase_tools
 from app.tools.memory_tools import get_memory_tools
+from app.agents.memory_config import create_db, create_memory_manager
 
 
 def create_podcast_creator() -> Agent:
@@ -139,4 +140,9 @@ def create_podcast_creator() -> Agent:
         ],
         tools=[*get_audio_tools(), *get_supabase_tools(), *get_memory_tools()],
         markdown=True,
+        store_history_messages=True,
+        add_history_to_context=True,
+        num_history_runs=5,
+        db=create_db(),
+        memory_manager=create_memory_manager(),
     )

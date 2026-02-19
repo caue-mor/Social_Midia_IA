@@ -14,6 +14,8 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
     monkeypatch.setenv("API_SECRET_KEY", "test-secret")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    # DATABASE_URL vazio — degradacao graciosa (sem memoria persistente nos testes)
+    monkeypatch.setenv("DATABASE_URL", "")
 
 
 @pytest.fixture

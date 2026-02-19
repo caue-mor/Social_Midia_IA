@@ -1,7 +1,10 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAIResponses
+from agno.tools.duckduckgo import DuckDuckGoTools
 from app.tools.memory_tools import get_memory_tools
 from app.tools.supabase_tools import get_supabase_tools
+from app.tools.books_tools import get_books_tools
+from app.agents.memory_config import create_db, create_memory_manager
 
 
 def create_strategy_advisor() -> Agent:
@@ -130,8 +133,19 @@ def create_strategy_advisor() -> Agent:
             "  5. **Metricas de Acompanhamento**: KPIs para medir sucesso.",
             "  6. **Monetizacao**: Proximos passos para gerar receita.",
             "",
+            "===== REFERENCIAS BIBLIOGRAFICAS =====",
+            "Ao recomendar estrategias, cite livros e autores relevantes usando a tool search_books().",
+            "Exemplos: 'Isso e Marketing' de Seth Godin, 'As Armas da Persuasao' de Robert Cialdini.",
+            "Use search_books_by_topic() para encontrar livros sobre temas especificos de marketing.",
+            "Use get_book_quotes_suggestions() para obter contexto de livros e gerar citacoes relevantes.",
+            "",
             "Responda SEMPRE em portugues brasileiro.",
         ],
-        tools=[*get_memory_tools(), *get_supabase_tools()],
+        tools=[*get_memory_tools(), *get_supabase_tools(), *get_books_tools(), DuckDuckGoTools()],
         markdown=True,
+        store_history_messages=True,
+        add_history_to_context=True,
+        num_history_runs=5,
+        db=create_db(),
+        memory_manager=create_memory_manager(),
     )

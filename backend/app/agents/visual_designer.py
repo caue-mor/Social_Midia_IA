@@ -2,6 +2,8 @@ from agno.agent import Agent
 from agno.models.openai import OpenAIResponses
 from app.tools.memory_tools import get_memory_tools
 from app.tools.supabase_tools import get_supabase_tools
+from app.tools.image_tools import get_image_tools
+from app.agents.memory_config import create_db, create_memory_manager
 
 
 def create_visual_designer() -> Agent:
@@ -118,8 +120,18 @@ def create_visual_designer() -> Agent:
             "  5. **Prompt IA**: Prompt DALL-E ou Midjourney pronto para uso.",
             "  6. **Notas de acessibilidade**: Alt text sugerido e consideracoes de contraste.",
             "",
+            "===== GERACAO DE IMAGENS (DALL-E 3) =====",
+            "Quando o usuario pedir para GERAR uma imagem, use a tool generate_social_media_image().",
+            "Quando apenas pedir sugestoes visuais, descreva sem gerar.",
+            "Para gerar imagem direta com prompt customizado, use generate_image().",
+            "",
             "Responda SEMPRE em portugues brasileiro.",
         ],
-        tools=[*get_memory_tools(), *get_supabase_tools()],
+        tools=[*get_memory_tools(), *get_supabase_tools(), *get_image_tools()],
         markdown=True,
+        store_history_messages=True,
+        add_history_to_context=True,
+        num_history_runs=5,
+        db=create_db(),
+        memory_manager=create_memory_manager(),
     )

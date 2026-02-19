@@ -8,6 +8,10 @@ from pydantic import BaseModel
 from app.dependencies import get_current_user
 from app.models.schemas import ContentGenerateRequest, ContentResponse
 from app.constants import TABLES
+from app.tools.publishing_tools import (
+    publish_to_instagram,
+    publish_carousel_to_instagram,
+)
 
 router = APIRouter()
 logger = logging.getLogger("agentesocial.content")
@@ -282,3 +286,171 @@ async def schedule_content(
     except Exception as e:
         logger.error(f"Error scheduling content {content_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ---------------------------------------------------------------------------
+# POST /content/{content_id}/auto-publish  - Auto-publish via platform API
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{content_id}/auto-publish")
+async def auto_publish_content(
+    content_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Publish content directly to the target platform via its API.
+
+    Fetches the content piece, determines the platform, calls the appropriate
+    publishing tool, and updates the record status to 'published' on success.
+    """
+    from app.database.supabase_client import get_supabase
+
+    supabase = get_supabase()
+
+    # ------------------------------------------------------------------
+    # 1. Fetch content piece
+    # ------------------------------------------------------------------
+    existing = (
+        supabase.table(TABLES["content_pieces"])
+        .select("*")
+        .eq("id", content_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if not existing or not existing.data:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    content = existing.data
+
+    if content.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to publish this content")
+
+    if content.get("status") == "published":
+        raise HTTPException(status_code=400, detail="Content is already published")
+
+    # ------------------------------------------------------------------
+    # 2. Determine platform and gather publishing data
+    # ------------------------------------------------------------------
+    platform = (content.get("platform") or "").lower()
+    caption = content.get("caption") or content.get("body") or ""
+    image_url = content.get("image_url") or content.get("visual_suggestion") or ""
+    content_type = (content.get("content_type") or "").lower()
+
+    # Append hashtags to caption if present
+    hashtags = content.get("hashtags")
+    if hashtags and isinstance(hashtags, list):
+        hashtag_str = " ".join(
+            tag if tag.startswith("#") else f"#{tag}" for tag in hashtags
+        )
+        caption = f"{caption}\n\n{hashtag_str}".strip()
+
+    # ------------------------------------------------------------------
+    # 3. Call the appropriate publishing tool
+    # ------------------------------------------------------------------
+    if platform == "instagram":
+        result = _publish_instagram(content, caption, image_url, content_type)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Auto-publish is not yet supported for platform '{platform}'. "
+            f"Currently supported: instagram.",
+        )
+
+    # ------------------------------------------------------------------
+    # 4. Check result and update status
+    # ------------------------------------------------------------------
+    is_success = "sucesso" in result.lower() or "successfully" in result.lower()
+
+    if is_success:
+        now = datetime.utcnow().isoformat()
+        # Extract permalink from result
+        permalink = None
+        for line in result.split("\n"):
+            if line.startswith("Permalink:"):
+                permalink = line.split("Permalink:", 1)[1].strip()
+                break
+
+        update_data: dict = {
+            "status": "published",
+            "published_at": now,
+            "updated_at": now,
+        }
+
+        # Store permalink and media_id in metadata
+        metadata = content.get("metadata") or {}
+        if isinstance(metadata, dict):
+            metadata["auto_published"] = True
+            metadata["publish_platform_response"] = result
+            if permalink:
+                metadata["permalink"] = permalink
+            update_data["metadata"] = metadata
+
+        try:
+            updated = (
+                supabase.table(TABLES["content_pieces"])
+                .update(update_data)
+                .eq("id", content_id)
+                .execute()
+            )
+            return {
+                "success": True,
+                "platform": platform,
+                "result": result,
+                "permalink": permalink,
+                "content": updated.data[0] if updated.data else None,
+            }
+        except Exception as e:
+            logger.error(f"Content published but DB update failed for {content_id}: {e}")
+            return {
+                "success": True,
+                "platform": platform,
+                "result": result,
+                "permalink": permalink,
+                "warning": "Published successfully but failed to update database status.",
+            }
+    else:
+        # Publishing failed — do not update status
+        logger.warning(f"Auto-publish failed for {content_id}: {result}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to publish to {platform}: {result}",
+        )
+
+
+def _publish_instagram(
+    content: dict,
+    caption: str,
+    image_url: str,
+    content_type: str,
+) -> str:
+    """Route to the correct Instagram publishing tool based on content type."""
+    # Check for carousel: multiple image URLs stored as JSON list
+    image_urls = content.get("image_urls") or content.get("carousel_urls")
+
+    if content_type in ("carousel", "carousel_album") or (
+        isinstance(image_urls, list) and len(image_urls) >= 2
+    ):
+        if not isinstance(image_urls, list) or len(image_urls) < 2:
+            return (
+                "Tipo de conteudo e carrossel mas nao ha imagens suficientes. "
+                "Forneça pelo menos 2 URLs de imagem em 'image_urls'."
+            )
+        return publish_carousel_to_instagram(
+            caption=caption,
+            image_urls=image_urls,
+        )
+
+    if not image_url:
+        return (
+            "Nenhuma URL de imagem encontrada no conteudo. "
+            "Adicione uma 'image_url' ao conteudo antes de publicar."
+        )
+
+    media_type = "VIDEO" if content_type in ("video", "reel", "reels") else "IMAGE"
+
+    return publish_to_instagram(
+        caption=caption,
+        image_url=image_url,
+        media_type=media_type,
+    )

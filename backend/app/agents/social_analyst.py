@@ -1,9 +1,11 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAIResponses
+from agno.tools.duckduckgo import DuckDuckGoTools
 from app.tools.instagram_tools import get_instagram_tools
 from app.tools.youtube_tools import get_youtube_tools
 from app.tools.trends_tools import get_trends_tools
 from app.tools.supabase_tools import get_supabase_tools
+from app.agents.memory_config import create_db, create_memory_manager
 
 
 def create_social_analyst() -> Agent:
@@ -65,6 +67,12 @@ def create_social_analyst() -> Agent:
             *get_youtube_tools(),
             *get_trends_tools(),
             *get_supabase_tools(),
+            DuckDuckGoTools(),
         ],
         markdown=True,
+        store_history_messages=True,
+        add_history_to_context=True,
+        num_history_runs=5,
+        db=create_db(),
+        memory_manager=create_memory_manager(),
     )

@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = ""
 
+    # Postgres (AGNO Memory + Storage — conexao direta ao Supabase)
+    DATABASE_URL: str = ""
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 

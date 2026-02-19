@@ -1,10 +1,12 @@
 import json
+import uuid
 import logging
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 from jose import jwt, JWTError
 from app.dependencies import get_current_user
 from app.models.schemas import ChatRequest, ChatResponse
-from app.agents.team import get_team_response
+from app.agents.team import get_team, get_team_response
 from app.config import get_settings
 from app.constants import TABLES
 
@@ -26,6 +28,93 @@ async def send_message(
         context=request.context,
     )
     return result
+
+
+@router.post("/stream")
+async def chat_stream(request: ChatRequest, user: dict = Depends(get_current_user)):
+    """SSE streaming endpoint for chat responses."""
+
+    async def event_generator():
+        # Send typing event
+        yield f"data: {json.dumps({'type': 'typing', 'content': ''})}\n\n"
+
+        try:
+            team = get_team()
+            user_id = user.get("id", user.get("sub", "anonymous"))
+            conversation_id = request.conversation_id or str(uuid.uuid4())
+
+            full_message = request.message
+            if request.context:
+                context_str = ", ".join(f"{k}: {v}" for k, v in request.context.items())
+                full_message = f"[Contexto: user_id={user_id}, {context_str}] {request.message}"
+            else:
+                full_message = f"[Contexto: user_id={user_id}] {request.message}"
+
+            # Run the team (non-streaming, then stream the response in chunks)
+            response = team.run(
+                full_message,
+                session_id=conversation_id,
+                user_id=user_id,
+            )
+            response_text = response.content if hasattr(response, "content") else str(response)
+
+            # Stream response in chunks for better UX
+            words = response_text.split(" ")
+            chunk_size = 3  # Send 3 words at a time
+            for i in range(0, len(words), chunk_size):
+                chunk = " ".join(words[i : i + chunk_size])
+                if i > 0:
+                    chunk = " " + chunk
+                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+
+            # Send done event with metadata
+            yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'agent_type': request.agent_type or 'master'})}\n\n"
+
+            # Save conversation (non-blocking)
+            try:
+                from app.database.supabase_client import get_supabase
+
+                supabase = get_supabase()
+                existing = (
+                    supabase.table(TABLES["agent_conversations"])
+                    .select("messages")
+                    .eq("id", conversation_id)
+                    .maybe_single()
+                    .execute()
+                )
+                messages = existing.data["messages"] if existing and existing.data else []
+                messages.append({"role": "user", "content": request.message})
+                messages.append({"role": "assistant", "content": response_text})
+
+                if existing and existing.data:
+                    supabase.table(TABLES["agent_conversations"]).update(
+                        {"messages": messages, "updated_at": "now()"}
+                    ).eq("id", conversation_id).execute()
+                else:
+                    supabase.table(TABLES["agent_conversations"]).insert(
+                        {
+                            "id": conversation_id,
+                            "user_id": user_id,
+                            "agent_type": request.agent_type or "master",
+                            "messages": messages,
+                        }
+                    ).execute()
+            except Exception:
+                logger.warning(f"Failed to save conversation in stream endpoint: {conversation_id}")
+
+        except Exception as e:
+            logger.error(f"SSE stream error for user {user.get('id', 'unknown')}: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'content': 'Desculpe, ocorreu um erro. Tente novamente.'})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/conversations")

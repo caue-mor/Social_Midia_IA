@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { ChatInput } from "@/components/chat/chat-input";
+import { ConversationHistory } from "@/components/chat/conversation-history";
 import { useChat } from "@/hooks/use-chat";
 
 const suggestions = [
@@ -49,16 +50,51 @@ export default function ChatPage() {
     isTyping,
     isConnected,
     connectionMode,
+    clearMessages,
+    loadConversation,
+    getCurrentConversationId,
   } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const previousMessageCountRef = useRef(0);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
+  // Trigger refresh when a new conversation is created
+  useEffect(() => {
+    if (messages.length > previousMessageCountRef.current) {
+      const hasNewMessage = messages.length > 0;
+      const currentConversationId = getCurrentConversationId();
+
+      // If we have messages and a conversation ID, refresh the sidebar
+      if (hasNewMessage && currentConversationId) {
+        setRefreshTrigger(prev => prev + 1);
+      }
+    }
+    previousMessageCountRef.current = messages.length;
+  }, [messages, getCurrentConversationId]);
+
+  const handleSelectConversation = (id: string, conversationMessages: any[]) => {
+    loadConversation(id, conversationMessages);
+  };
+
+  const handleNewConversation = () => {
+    clearMessages();
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+    <div className="flex h-full">
+      <ConversationHistory
+        activeConversationId={getCurrentConversationId()}
+        onSelectConversation={handleSelectConversation}
+        onNewConversation={handleNewConversation}
+        refreshTrigger={refreshTrigger}
+      />
+
+      <div className="flex flex-col flex-1 h-full">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between md:ml-0 ml-12">
         <div>
           <h1 className="text-xl font-bold">Chat com IA</h1>
           <p className="text-sm text-[var(--muted-foreground)]">
@@ -122,6 +158,7 @@ export default function ChatPage() {
         loading={isLoading}
         suggestions={messages.length === 0 ? suggestions : []}
       />
+      </div>
     </div>
   );
 }

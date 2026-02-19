@@ -330,6 +330,15 @@ export function useChat() {
     conversationIdRef.current = null;
   }, []);
 
+  const loadConversation = useCallback((conversationId: string, messages: Message[]) => {
+    conversationIdRef.current = conversationId;
+    setMessages(messages);
+  }, []);
+
+  const getCurrentConversationId = useCallback(() => {
+    return conversationIdRef.current;
+  }, []);
+
   return {
     messages,
     sendMessage,
@@ -338,5 +347,7 @@ export function useChat() {
     isConnected,
     connectionMode,
     clearMessages,
+    loadConversation,
+    getCurrentConversationId,
   };
 }
