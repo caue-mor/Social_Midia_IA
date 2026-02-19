@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://social-midia-ia.vercel.app",
     ]
 
     # Instagram Graph API
