@@ -51,6 +51,9 @@ def create_analysis_squad() -> Team:
             "Use para analise de perfil, metricas, tendencias, viral, benchmarking e consultoria estrategica."
         ),
         instructions=[
+            "REGRA: Instrua os membros a usarem suas ferramentas PROATIVAMENTE. "
+            "Nenhum membro deve fazer perguntas ao usuario — todos devem buscar dados e agir imediatamente.",
+            "",
             "Voce e o coordenador do Analysis Squad do AgenteSocial.",
             "Ao receber um pedido de analise:",
             "1. Delegue ao Social Media Analyst para dados de perfil e metricas.",

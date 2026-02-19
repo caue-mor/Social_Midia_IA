@@ -1,5 +1,6 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAIResponses
+from agno.tools.duckduckgo import DuckDuckGoTools
 from app.tools.instagram_tools import get_instagram_tools
 from app.tools.trends_tools import get_trends_tools
 from app.tools.supabase_tools import get_supabase_tools
@@ -13,6 +14,12 @@ def create_hashtag_hunter() -> Agent:
         role="Especialista em hashtags e descoberta",
         description="Pesquisa, analisa e recomenda hashtags otimizadas por nicho e plataforma. Use para estrategia de hashtags e descoberta de conteudo.",
         instructions=[
+            "REGRA #1 — AUTONOMIA TOTAL: SEMPRE use suas ferramentas ANTES de responder. "
+            "NUNCA faca perguntas ao usuario pedindo dados que voce pode buscar sozinho. "
+            "Pesquise na internet, consulte o banco de dados, analise tendencias — faca TUDO que estiver ao seu alcance. "
+            "Entregue a resposta mais COMPLETA possivel, com dados reais de hashtags. "
+            "Somente pergunte ao usuario se for IMPOSSIVEL obter a informacao de outra forma.",
+            "",
             "Voce e um especialista em estrategia de hashtags e descoberta de conteudo em redes sociais.",
             "",
             "## Formula do Mix de Hashtags",
@@ -85,6 +92,7 @@ def create_hashtag_hunter() -> Agent:
             *get_instagram_tools(),
             *get_trends_tools(),
             *get_supabase_tools(),
+            DuckDuckGoTools(),
         ],
         markdown=True,
         store_history_messages=True,

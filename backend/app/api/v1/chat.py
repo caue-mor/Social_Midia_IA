@@ -121,10 +121,31 @@ async def chat_stream(request: ChatRequest, user: dict = Depends(get_current_use
 async def list_conversations(
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
-    result = supabase.table(TABLES["agent_conversations"]).select("*").eq("user_id", user["id"]).order("updated_at", desc=True).execute()
-    return {"conversations": result.data}
+    from app.database.supabase_client import get_supabase_admin
+    supabase = get_supabase_admin()
+    result = (
+        supabase.table(TABLES["agent_conversations"])
+        .select("id,user_id,agent_type,messages,created_at,updated_at")
+        .eq("user_id", user["id"])
+        .order("updated_at", desc=True)
+        .execute()
+    )
+    conversations = []
+    for row in result.data or []:
+        msgs = row.get("messages") or []
+        first_msg = ""
+        for m in msgs:
+            if m.get("role") == "user":
+                first_msg = m.get("content", "")[:100]
+                break
+        conversations.append({
+            "id": row["id"],
+            "first_message": first_msg or "Conversa sem mensagem",
+            "agent_type": row.get("agent_type"),
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        })
+    return {"conversations": conversations}
 
 
 @router.get("/conversations/{conversation_id}/messages")
@@ -132,10 +153,20 @@ async def get_conversation(
     conversation_id: str,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
-    result = supabase.table(TABLES["agent_conversations"]).select("*").eq("id", conversation_id).eq("user_id", user["id"]).single().execute()
-    return result.data
+    from app.database.supabase_client import get_supabase_admin
+    supabase = get_supabase_admin()
+    result = (
+        supabase.table(TABLES["agent_conversations"])
+        .select("messages")
+        .eq("id", conversation_id)
+        .eq("user_id", user["id"])
+        .maybe_single()
+        .execute()
+    )
+    if not result.data:
+        return {"messages": []}
+    messages = result.data.get("messages") or []
+    return {"messages": messages}
 
 
 def _authenticate_ws_token(token: str) -> dict | None:

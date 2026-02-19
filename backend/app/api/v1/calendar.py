@@ -129,17 +129,50 @@ async def generate_plan(
     user: dict = Depends(get_current_user),
 ):
     from app.agents.team import get_team_response
+    from app.database.supabase_client import get_supabase_admin
+    from datetime import date
 
     platforms_str = ", ".join(request.platforms)
-    topics_str = ", ".join(request.focus_topics) if request.focus_topics else "temas variados do nicho"
+    topics_str = ", ".join(request.focus_topics) if request.focus_topics else None
+
+    # Buscar contexto do perfil Instagram
+    profile_context = ""
+    try:
+        supabase = get_supabase_admin()
+        profile = (
+            supabase.table(TABLES["profiles"])
+            .select("username,platform_user_id")
+            .eq("user_id", user["id"])
+            .eq("platform", "instagram")
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if profile.data:
+            username = profile.data[0].get("username", "")
+            profile_context = f" O usuario tem perfil Instagram @{username}."
+    except Exception:
+        pass
+
+    today = date.today().strftime("%d/%m/%Y")
 
     prompt = (
-        f"Gere um plano editorial {request.period} para as plataformas: {platforms_str}. "
-        f"Topicos foco: {topics_str}. "
-        f"Verifique o calendario existente do usuario para evitar conflitos. "
-        f"Consulte o historico de conteudo para basear as recomendacoes em performance real. "
-        f"Para cada item do plano, inclua: titulo sugerido, plataforma, tipo de conteudo, "
-        f"data/horario ideal e status 'draft'."
+        f"ACAO OBRIGATORIA: Gere IMEDIATAMENTE um plano editorial {request.period} completo "
+        f"para as plataformas: {platforms_str}. Data de hoje: {today}.{profile_context} "
+    )
+    if topics_str:
+        prompt += f"Topicos foco: {topics_str}. "
+    else:
+        prompt += (
+            "Use seu conhecimento de tendencias atuais e pesquise na internet "
+            "para definir os melhores topicos do momento. "
+        )
+    prompt += (
+        "NAO faca perguntas. NAO peca mais informacoes. "
+        "Consulte o calendario existente para evitar conflitos. "
+        "Para cada item, inclua: titulo, plataforma, tipo de conteudo, "
+        "data/horario ideal e status 'draft'. "
+        "Entregue o plano COMPLETO e PRONTO para uso."
     )
     if request.additional_instructions:
         prompt += f" Instrucoes adicionais: {request.additional_instructions}"

@@ -1,5 +1,6 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAIResponses
+from agno.tools.duckduckgo import DuckDuckGoTools
 from app.tools.supabase_tools import get_supabase_tools
 from app.tools.memory_tools import get_memory_tools
 from app.agents.memory_config import create_db, create_memory_manager
@@ -17,6 +18,11 @@ def create_calendar_planner() -> Agent:
             "Use para planejamento de postagens, datas, frequencia e automacao de publicacao."
         ),
         instructions=[
+            # Autonomia total
+            "REGRA #1 — AUTONOMIA TOTAL: NUNCA faca perguntas ao usuario. SEMPRE gere o plano completo automaticamente. "
+            "Se nao souber o nicho do usuario, pesquise na internet tendencias gerais de redes sociais e crie um plano baseado nisso. "
+            "Use suas ferramentas para buscar dados e tendencias ANTES de responder.",
+
             # Core role
             "Voce e o planejador editorial do AgenteSocial, responsavel por organizar e otimizar "
             "o calendario de conteudo em todas as plataformas sociais.",
@@ -71,7 +77,7 @@ def create_calendar_planner() -> Agent:
             "- Uma thread no LinkedIn pode virar: 1 carrossel no Instagram + 1 post no LinkedIn.",
             "- Indique no plano quais conteudos sao derivados de um conteudo pilar.",
         ],
-        tools=[*get_supabase_tools(), *get_memory_tools()],
+        tools=[*get_supabase_tools(), *get_memory_tools(), DuckDuckGoTools()],
         markdown=True,
         store_history_messages=True,
         add_history_to_context=True,

@@ -65,6 +65,8 @@ def create_team() -> Team:
             "1. Sempre roteie para exatamente 1 sub-team por mensagem.",
             "2. Se a mensagem envolver multiplas areas, priorize a principal.",
             "3. Responda SEMPRE em portugues brasileiro.",
+            "4. IMPORTANTE: Instrua o sub-team a AGIR imediatamente, sem fazer perguntas desnecessarias ao usuario. "
+            "Os agentes devem usar suas ferramentas proativamente para buscar dados e entregar respostas completas.",
         ],
         show_members_responses=True,
         enable_agentic_memory=True,

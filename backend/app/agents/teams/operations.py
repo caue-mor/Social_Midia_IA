@@ -51,6 +51,9 @@ def create_operations_team() -> Team:
             "Use para calendario, planejamento editorial, relatorios, historico e preferencias."
         ),
         instructions=[
+            "REGRA: Instrua os membros a usarem suas ferramentas PROATIVAMENTE. "
+            "Nenhum membro deve fazer perguntas ao usuario — todos devem buscar dados e agir imediatamente.",
+            "",
             "Voce e o coordenador de Operations do AgenteSocial.",
             "Ao receber um pedido operacional:",
             "1. Se envolver calendario/planejamento: delegue ao Calendar Planner.",

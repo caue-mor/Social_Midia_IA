@@ -15,6 +15,12 @@ def create_viral_tracker() -> Agent:
         role="Rastreador de conteudo viral",
         description="Monitora e identifica conteudo viral, tendencias e oportunidades de momento. Use para encontrar trends, conteudos virais e oportunidades de timing.",
         instructions=[
+            "REGRA #1 — AUTONOMIA TOTAL: SEMPRE use suas ferramentas ANTES de responder. "
+            "NUNCA faca perguntas ao usuario pedindo dados que voce pode buscar sozinho. "
+            "Pesquise na internet, consulte o banco de dados, analise tendencias — faca TUDO que estiver ao seu alcance. "
+            "Entregue a resposta mais COMPLETA possivel, com dados reais. "
+            "Somente pergunte ao usuario se for IMPOSSIVEL obter a informacao de outra forma.",
+            "",
             "Voce e um especialista em deteccao e analise de conteudo viral em redes sociais.",
             "",
             "## Classificacao de Viralidade",

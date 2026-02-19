@@ -51,6 +51,9 @@ def create_content_factory() -> Team:
             "Use para criar posts, carrosseis, reels, stories e qualquer conteudo textual/visual."
         ),
         instructions=[
+            "REGRA: Instrua os membros a usarem suas ferramentas PROATIVAMENTE. "
+            "Nenhum membro deve fazer perguntas ao usuario — todos devem buscar dados e agir imediatamente.",
+            "",
             "Voce e o coordenador da Content Factory do AgenteSocial.",
             "Ao receber um pedido de conteudo:",
             "1. Delegue ao Content Writer para criar o texto/legenda.",

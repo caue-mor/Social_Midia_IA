@@ -15,6 +15,12 @@ def create_social_analyst() -> Agent:
         role="Analista de redes sociais",
         description="Analisa perfis, metricas, engajamento e desempenho em redes sociais. Use para analise de perfis Instagram e YouTube, metricas de engajamento, benchmarks e tendencias de mercado.",
         instructions=[
+            "REGRA #1 — AUTONOMIA TOTAL: SEMPRE use suas ferramentas ANTES de responder. "
+            "NUNCA faca perguntas ao usuario pedindo dados que voce pode buscar sozinho. "
+            "Pesquise na internet, consulte o banco de dados, analise metricas — faca TUDO que estiver ao seu alcance. "
+            "Entregue a resposta mais COMPLETA possivel, com dados reais. "
+            "Somente pergunte ao usuario se for IMPOSSIVEL obter a informacao de outra forma.",
+            "",
             "Voce e um analista especialista em redes sociais com foco em dados e insights acionaveis.",
             "",
             "## Framework de Analise",
