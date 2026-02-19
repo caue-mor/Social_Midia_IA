@@ -1,27 +1,30 @@
 import httpx
 from agno.tools import tool
-from app.config import get_settings
+from app.services.token_manager import get_user_instagram_credentials
+
+GRAPH_API_BASE = "https://graph.instagram.com/v25.0"
 
 _INSTAGRAM_NOT_CONFIGURED_MSG = (
     "A integracao com o Instagram ainda nao esta configurada. "
     "Para conectar sua conta, acesse Configuracoes > Integracoes > Instagram "
-    "e adicione seu INSTAGRAM_ACCESS_TOKEN e INSTAGRAM_BUSINESS_ACCOUNT_ID. "
+    "e clique em 'Conectar Instagram' para autorizar via OAuth. "
     "Enquanto isso, voce pode usar a ferramenta get_instagram_mock_data() "
     "para ver uma demonstracao com dados de exemplo."
 )
 
 
 @tool
-def get_instagram_profile(handle: str) -> str:
+def get_instagram_profile(handle: str, user_id: str = "") -> str:
     """Busca informacoes do perfil Instagram via Graph API."""
-    settings = get_settings()
-    if not settings.INSTAGRAM_ACCESS_TOKEN:
+    creds = get_user_instagram_credentials(user_id)
+    if not creds:
         return _INSTAGRAM_NOT_CONFIGURED_MSG
 
-    url = f"https://graph.facebook.com/v19.0/{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}"
+    access_token, account_id = creds
+    url = f"{GRAPH_API_BASE}/me"
     params = {
-        "fields": "username,name,biography,followers_count,follows_count,media_count,profile_picture_url",
-        "access_token": settings.INSTAGRAM_ACCESS_TOKEN,
+        "fields": "user_id,username,name,biography,followers_count,follows_count,media_count,profile_picture_url",
+        "access_token": access_token,
     }
     try:
         resp = httpx.get(url, params=params, timeout=30)
@@ -32,17 +35,18 @@ def get_instagram_profile(handle: str) -> str:
 
 
 @tool
-def get_instagram_media(limit: int = 25) -> str:
+def get_instagram_media(limit: int = 25, user_id: str = "") -> str:
     """Busca posts recentes do Instagram via Graph API."""
-    settings = get_settings()
-    if not settings.INSTAGRAM_ACCESS_TOKEN:
+    creds = get_user_instagram_credentials(user_id)
+    if not creds:
         return _INSTAGRAM_NOT_CONFIGURED_MSG
 
-    url = f"https://graph.facebook.com/v19.0/{settings.INSTAGRAM_BUSINESS_ACCOUNT_ID}/media"
+    access_token, account_id = creds
+    url = f"{GRAPH_API_BASE}/me/media"
     params = {
         "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count",
         "limit": min(limit, 100),
-        "access_token": settings.INSTAGRAM_ACCESS_TOKEN,
+        "access_token": access_token,
     }
     try:
         resp = httpx.get(url, params=params, timeout=30)
@@ -53,16 +57,17 @@ def get_instagram_media(limit: int = 25) -> str:
 
 
 @tool
-def get_instagram_insights(media_id: str) -> str:
+def get_instagram_insights(media_id: str, user_id: str = "") -> str:
     """Busca insights de um post especifico do Instagram."""
-    settings = get_settings()
-    if not settings.INSTAGRAM_ACCESS_TOKEN:
+    creds = get_user_instagram_credentials(user_id)
+    if not creds:
         return _INSTAGRAM_NOT_CONFIGURED_MSG
 
-    url = f"https://graph.facebook.com/v19.0/{media_id}/insights"
+    access_token, account_id = creds
+    url = f"{GRAPH_API_BASE}/{media_id}/insights"
     params = {
         "metric": "engagement,impressions,reach,saved,shares",
-        "access_token": settings.INSTAGRAM_ACCESS_TOKEN,
+        "access_token": access_token,
     }
     try:
         resp = httpx.get(url, params=params, timeout=30)
@@ -73,18 +78,20 @@ def get_instagram_insights(media_id: str) -> str:
 
 
 @tool
-def search_instagram_hashtag(hashtag: str) -> str:
+def search_instagram_hashtag(hashtag: str, user_id: str = "") -> str:
     """Pesquisa uma hashtag no Instagram e retorna volume."""
-    settings = get_settings()
-    if not settings.INSTAGRAM_ACCESS_TOKEN:
+    creds = get_user_instagram_credentials(user_id)
+    if not creds:
         return _INSTAGRAM_NOT_CONFIGURED_MSG
 
-    # Primeiro busca o ID da hashtag
-    url = "https://graph.facebook.com/v19.0/ig_hashtag_search"
+    access_token, account_id = creds
+
+    # Hashtag search uses graph.facebook.com (requires IG user ID)
+    url = "https://graph.facebook.com/v25.0/ig_hashtag_search"
     params = {
         "q": hashtag.replace("#", ""),
-        "user_id": settings.INSTAGRAM_BUSINESS_ACCOUNT_ID,
-        "access_token": settings.INSTAGRAM_ACCESS_TOKEN,
+        "user_id": account_id,
+        "access_token": access_token,
     }
     try:
         resp = httpx.get(url, params=params, timeout=30)
@@ -92,17 +99,23 @@ def search_instagram_hashtag(hashtag: str) -> str:
         data = resp.json()
         if data.get("data"):
             hashtag_id = data["data"][0]["id"]
-            # Busca top media da hashtag
-            media_url = f"https://graph.facebook.com/v19.0/{hashtag_id}/top_media"
+            media_url = f"https://graph.facebook.com/v25.0/{hashtag_id}/top_media"
             media_params = {
-                "user_id": settings.INSTAGRAM_BUSINESS_ACCOUNT_ID,
+                "user_id": account_id,
                 "fields": "id,caption,media_type,like_count,comments_count,permalink",
-                "access_token": settings.INSTAGRAM_ACCESS_TOKEN,
+                "access_token": access_token,
             }
             media_resp = httpx.get(media_url, params=media_params, timeout=30)
             media_resp.raise_for_status()
             return str(media_resp.json())
         return "Hashtag nao encontrada."
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 400:
+            return (
+                "A pesquisa de hashtags pode nao estar disponivel com Instagram Login. "
+                "Este recurso requer permissoes especificas do app Meta."
+            )
+        return f"Erro ao pesquisar hashtag: {e}"
     except Exception as e:
         return f"Erro ao pesquisar hashtag: {e}"
 

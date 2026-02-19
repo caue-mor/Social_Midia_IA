@@ -77,6 +77,9 @@ def create_hashtag_hunter() -> Agent:
             "- Inclua hashtags em portugues E ingles quando relevante para alcance global",
             "- Alerte sobre hashtags banidas ou que podem gerar shadowban",
             "- Responda em portugues brasileiro.",
+            "",
+            "## Credenciais",
+            "- Sempre passe o user_id do contexto para as ferramentas do Instagram.",
         ],
         tools=[
             *get_instagram_tools(),

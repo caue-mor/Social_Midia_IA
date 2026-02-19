@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 from app.config import get_settings
 from app.dependencies import get_current_user
-from app.api.v1 import chat, content, analysis, reports, calendar, settings as settings_router, webhooks
+from app.api.v1 import auth as auth_router, chat, content, analysis, reports, calendar, settings as settings_router, webhooks
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,6 +52,7 @@ async def log_requests(request: Request, call_next):
 
 
 # Routers
+app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
 app.include_router(content.router, prefix="/api/v1/content", tags=["Content"])
 app.include_router(analysis.router, prefix="/api/v1/analysis", tags=["Analysis"])

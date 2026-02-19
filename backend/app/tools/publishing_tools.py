@@ -4,28 +4,17 @@ from datetime import datetime
 import httpx
 from agno.tools import tool
 
-from app.config import get_settings
+from app.services.token_manager import get_user_instagram_credentials
 
 logger = logging.getLogger("agentesocial.publishing")
 
-GRAPH_API_BASE = "https://graph.facebook.com/v19.0"
+GRAPH_API_BASE = "https://graph.instagram.com/v25.0"
 
 _INSTAGRAM_NOT_CONFIGURED_MSG = (
     "A integracao com o Instagram ainda nao esta configurada para publicacao. "
     "Para conectar sua conta, acesse Configuracoes > Integracoes > Instagram "
-    "e adicione seu INSTAGRAM_ACCESS_TOKEN e INSTAGRAM_BUSINESS_ACCOUNT_ID. "
-    "Ambos sao necessarios para publicar conteudo via Graph API."
+    "e clique em 'Conectar Instagram' para autorizar via OAuth."
 )
-
-
-def _get_ig_credentials() -> tuple[str, str] | None:
-    """Return (access_token, account_id) or None when not configured."""
-    settings = get_settings()
-    token = settings.INSTAGRAM_ACCESS_TOKEN
-    account_id = settings.INSTAGRAM_BUSINESS_ACCOUNT_ID
-    if not token or not account_id:
-        return None
-    return token, account_id
 
 
 # ---------------------------------------------------------------------------
@@ -38,6 +27,7 @@ def publish_to_instagram(
     caption: str,
     image_url: str,
     media_type: str = "IMAGE",
+    user_id: str = "",
 ) -> str:
     """Publica um post no Instagram via Graph API (Content Publishing).
 
@@ -48,11 +38,12 @@ def publish_to_instagram(
         caption: Legenda do post (pode incluir hashtags).
         image_url: URL publica da imagem ou video.
         media_type: Tipo de midia — "IMAGE" ou "VIDEO".
+        user_id: ID do usuario (para resolver credenciais OAuth).
 
     Returns:
         Permalink do post publicado ou mensagem de erro.
     """
-    creds = _get_ig_credentials()
+    creds = get_user_instagram_credentials(user_id)
     if creds is None:
         return _INSTAGRAM_NOT_CONFIGURED_MSG
 
@@ -66,10 +57,8 @@ def publish_to_instagram(
         )
 
     try:
-        # ------------------------------------------------------------------
         # Step 1: Create media container
-        # ------------------------------------------------------------------
-        container_url = f"{GRAPH_API_BASE}/{account_id}/media"
+        container_url = f"{GRAPH_API_BASE}/me/media"
         container_payload: dict = {
             "caption": caption,
             "access_token": access_token,
@@ -94,10 +83,8 @@ def publish_to_instagram(
             if status_result is not None:
                 return status_result
 
-        # ------------------------------------------------------------------
         # Step 2: Publish the container
-        # ------------------------------------------------------------------
-        publish_url = f"{GRAPH_API_BASE}/{account_id}/media_publish"
+        publish_url = f"{GRAPH_API_BASE}/me/media_publish"
         publish_payload = {
             "creation_id": creation_id,
             "access_token": access_token,
@@ -110,9 +97,7 @@ def publish_to_instagram(
         if not media_id:
             return f"Erro ao publicar: resposta inesperada — {pub_resp.json()}"
 
-        # ------------------------------------------------------------------
         # Step 3: Fetch permalink
-        # ------------------------------------------------------------------
         permalink = _get_permalink(media_id, access_token)
 
         logger.info("Instagram post published successfully: %s", media_id)
@@ -138,17 +123,18 @@ def publish_to_instagram(
 
 
 @tool
-def publish_carousel_to_instagram(caption: str, image_urls: list[str]) -> str:
+def publish_carousel_to_instagram(caption: str, image_urls: list[str], user_id: str = "") -> str:
     """Publica um carrossel (multiplas imagens) no Instagram via Graph API.
 
     Args:
         caption: Legenda do carrossel.
         image_urls: Lista de URLs publicas das imagens (2 a 10 imagens).
+        user_id: ID do usuario (para resolver credenciais OAuth).
 
     Returns:
         Permalink do carrossel publicado ou mensagem de erro.
     """
-    creds = _get_ig_credentials()
+    creds = get_user_instagram_credentials(user_id)
     if creds is None:
         return _INSTAGRAM_NOT_CONFIGURED_MSG
 
@@ -160,11 +146,9 @@ def publish_carousel_to_instagram(caption: str, image_urls: list[str]) -> str:
         return "O Instagram permite no maximo 10 imagens por carrossel."
 
     try:
-        # ------------------------------------------------------------------
-        # Step 1: Create individual item containers (no caption on children)
-        # ------------------------------------------------------------------
+        # Step 1: Create individual item containers
         children_ids: list[str] = []
-        container_url = f"{GRAPH_API_BASE}/{account_id}/media"
+        container_url = f"{GRAPH_API_BASE}/me/media"
 
         for idx, url in enumerate(image_urls):
             child_payload = {
@@ -182,9 +166,7 @@ def publish_carousel_to_instagram(caption: str, image_urls: list[str]) -> str:
                 )
             children_ids.append(child_id)
 
-        # ------------------------------------------------------------------
         # Step 2: Create carousel container
-        # ------------------------------------------------------------------
         carousel_payload = {
             "caption": caption,
             "media_type": "CAROUSEL",
@@ -198,10 +180,8 @@ def publish_carousel_to_instagram(caption: str, image_urls: list[str]) -> str:
         if not carousel_id:
             return f"Erro ao criar container do carrossel: {carousel_resp.json()}"
 
-        # ------------------------------------------------------------------
         # Step 3: Publish the carousel
-        # ------------------------------------------------------------------
-        publish_url = f"{GRAPH_API_BASE}/{account_id}/media_publish"
+        publish_url = f"{GRAPH_API_BASE}/me/media_publish"
         publish_payload = {
             "creation_id": carousel_id,
             "access_token": access_token,
@@ -243,6 +223,7 @@ def schedule_instagram_post(
     caption: str,
     image_url: str,
     scheduled_time: str,
+    user_id: str = "",
 ) -> str:
     """Agenda um post no Instagram para publicacao futura via Graph API.
 
@@ -252,17 +233,17 @@ def schedule_instagram_post(
         caption: Legenda do post.
         image_url: URL publica da imagem.
         scheduled_time: Horario de publicacao em formato ISO 8601 (ex: 2026-03-01T14:00:00Z).
+        user_id: ID do usuario (para resolver credenciais OAuth).
 
     Returns:
         Confirmacao do agendamento ou mensagem de erro.
     """
-    creds = _get_ig_credentials()
+    creds = get_user_instagram_credentials(user_id)
     if creds is None:
         return _INSTAGRAM_NOT_CONFIGURED_MSG
 
     access_token, account_id = creds
 
-    # Validate scheduled_time format
     try:
         scheduled_dt = datetime.fromisoformat(scheduled_time.replace("Z", "+00:00"))
         scheduled_ts = int(scheduled_dt.timestamp())
@@ -272,10 +253,9 @@ def schedule_instagram_post(
             "por exemplo: 2026-03-01T14:00:00Z"
         )
 
-    # Instagram requires the time to be 10 min to 75 days in the future
     now_ts = int(datetime.utcnow().timestamp())
-    min_ts = now_ts + 600  # 10 minutes
-    max_ts = now_ts + (75 * 24 * 60 * 60)  # 75 days
+    min_ts = now_ts + 600
+    max_ts = now_ts + (75 * 24 * 60 * 60)
 
     if scheduled_ts < min_ts:
         return "O horario agendado deve ser pelo menos 10 minutos no futuro."
@@ -283,10 +263,8 @@ def schedule_instagram_post(
         return "O horario agendado nao pode ser mais de 75 dias no futuro."
 
     try:
-        # ------------------------------------------------------------------
-        # Step 1: Create media container with publish_time (Unix timestamp)
-        # ------------------------------------------------------------------
-        container_url = f"{GRAPH_API_BASE}/{account_id}/media"
+        # Step 1: Create media container
+        container_url = f"{GRAPH_API_BASE}/me/media"
         container_payload = {
             "image_url": image_url,
             "caption": caption,
@@ -301,10 +279,8 @@ def schedule_instagram_post(
         if not creation_id:
             return f"Erro: Instagram nao retornou creation_id. Resposta: {resp.json()}"
 
-        # ------------------------------------------------------------------
-        # Step 2: Publish with scheduled timestamp
-        # ------------------------------------------------------------------
-        publish_url = f"{GRAPH_API_BASE}/{account_id}/media_publish"
+        # Step 2: Publish
+        publish_url = f"{GRAPH_API_BASE}/me/media_publish"
         publish_payload = {
             "creation_id": creation_id,
             "access_token": access_token,
@@ -317,11 +293,7 @@ def schedule_instagram_post(
         if not media_id:
             return f"Erro ao agendar publicacao: {pub_resp.json()}"
 
-        logger.info(
-            "Instagram post scheduled: %s for %s",
-            media_id,
-            scheduled_time,
-        )
+        logger.info("Instagram post scheduled: %s for %s", media_id, scheduled_time)
         return (
             f"Post agendado com sucesso no Instagram!\n"
             f"Media ID: {media_id}\n"
@@ -350,10 +322,7 @@ def _wait_for_container(
     max_attempts: int = 30,
     poll_interval: float = 2.0,
 ) -> str | None:
-    """Poll container status until FINISHED or timeout.
-
-    Returns None on success (FINISHED), or an error string on failure.
-    """
+    """Poll container status until FINISHED or timeout."""
     import time
 
     status_url = f"{GRAPH_API_BASE}/{container_id}"
@@ -378,7 +347,6 @@ def _wait_for_container(
             if status == "EXPIRED":
                 return "O container de midia expirou antes de ser publicado."
 
-            # IN_PROGRESS — wait and retry
             time.sleep(poll_interval)
         except Exception as e:
             logger.warning("Error polling container %s (attempt %d): %s", container_id, attempt, e)

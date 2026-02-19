@@ -349,7 +349,7 @@ async def auto_publish_content(
     # 3. Call the appropriate publishing tool
     # ------------------------------------------------------------------
     if platform == "instagram":
-        result = _publish_instagram(content, caption, image_url, content_type)
+        result = _publish_instagram(content, caption, image_url, content_type, user["id"])
     else:
         raise HTTPException(
             status_code=400,
@@ -423,6 +423,7 @@ def _publish_instagram(
     caption: str,
     image_url: str,
     content_type: str,
+    user_id: str = "",
 ) -> str:
     """Route to the correct Instagram publishing tool based on content type."""
     # Check for carousel: multiple image URLs stored as JSON list
@@ -439,6 +440,7 @@ def _publish_instagram(
         return publish_carousel_to_instagram(
             caption=caption,
             image_urls=image_urls,
+            user_id=user_id,
         )
 
     if not image_url:
@@ -453,4 +455,5 @@ def _publish_instagram(
         caption=caption,
         image_url=image_url,
         media_type=media_type,
+        user_id=user_id,
     )

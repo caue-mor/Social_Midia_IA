@@ -72,6 +72,9 @@ def create_viral_tracker() -> Agent:
             "- Classifique a dificuldade de execucao: facil, medio, dificil",
             "- Sugira adaptacoes especificas para o nicho do usuario",
             "- Responda em portugues brasileiro.",
+            "",
+            "## Credenciais",
+            "- Sempre passe o user_id do contexto para as ferramentas do Instagram.",
         ],
         tools=[
             *get_trends_tools(),

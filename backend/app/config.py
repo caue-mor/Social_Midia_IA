@@ -31,9 +31,15 @@ class Settings(BaseSettings):
         "https://social-midia-ia.vercel.app",
     ]
 
-    # Instagram Graph API
+    # Instagram Graph API (legacy env-var fallback)
     INSTAGRAM_ACCESS_TOKEN: str = ""
     INSTAGRAM_BUSINESS_ACCOUNT_ID: str = ""
+
+    # Meta OAuth (Instagram Login)
+    META_APP_ID: str = ""
+    META_APP_SECRET: str = ""
+    META_REDIRECT_URI: str = ""
+    FRONTEND_URL: str = "http://localhost:3000"
 
     # YouTube Data API
     YOUTUBE_API_KEY: str = ""

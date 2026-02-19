@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface SocialProfile {
   id: string;
@@ -8,6 +9,14 @@ interface SocialProfile {
   handle: string;
   followers_count: number;
   is_active: boolean;
+}
+
+interface InstagramStatus {
+  connected: boolean;
+  username?: string;
+  followers_count?: number;
+  expires_at?: string;
+  expires_in_days?: number;
 }
 
 interface BrandVoice {
@@ -28,7 +37,13 @@ const platformConfig: Record<string, { color: string; icon: string }> = {
 };
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const [profiles, setProfiles] = useState<SocialProfile[]>([]);
+  const [instagramStatus, setInstagramStatus] = useState<InstagramStatus>({ connected: false });
+  const [loadingInstagram, setLoadingInstagram] = useState(true);
+  const [connectingInstagram, setConnectingInstagram] = useState(false);
+  const [disconnectingInstagram, setDisconnectingInstagram] = useState(false);
+  const [instagramMessage, setInstagramMessage] = useState("");
   const [brandVoice, setBrandVoice] = useState({
     name: "",
     tone: "",
@@ -41,9 +56,38 @@ export default function SettingsPage() {
   const [newProfile, setNewProfile] = useState({ platform: "instagram", handle: "" });
   const [addingProfile, setAddingProfile] = useState(false);
 
+  const fetchInstagramStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/instagram/status");
+      if (res.ok) {
+        const data = await res.json();
+        setInstagramStatus(data);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingInstagram(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProfiles();
-  }, []);
+    fetchInstagramStatus();
+  }, [fetchInstagramStatus]);
+
+  // Handle OAuth callback query params
+  useEffect(() => {
+    const igParam = searchParams.get("instagram");
+    if (igParam === "connected") {
+      setInstagramMessage("Instagram conectado com sucesso!");
+      fetchInstagramStatus();
+      setTimeout(() => setInstagramMessage(""), 5000);
+    } else if (igParam === "error") {
+      const reason = searchParams.get("reason") || "unknown";
+      setInstagramMessage(`Erro ao conectar Instagram: ${reason}`);
+      setTimeout(() => setInstagramMessage(""), 5000);
+    }
+  }, [searchParams, fetchInstagramStatus]);
 
   const fetchProfiles = async () => {
     try {
@@ -74,6 +118,46 @@ export default function SettingsPage() {
       // silently fail
     } finally {
       setAddingProfile(false);
+    }
+  };
+
+  const connectInstagram = async () => {
+    setConnectingInstagram(true);
+    try {
+      const res = await fetch("/api/auth/instagram");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authorization_url) {
+          window.location.href = data.authorization_url;
+          return; // Page will navigate away
+        }
+      }
+      setInstagramMessage("Erro ao gerar URL de autorizacao. Verifique se META_APP_ID esta configurado.");
+      setTimeout(() => setInstagramMessage(""), 5000);
+    } catch {
+      setInstagramMessage("Erro de conexao ao tentar conectar Instagram.");
+      setTimeout(() => setInstagramMessage(""), 5000);
+    } finally {
+      setConnectingInstagram(false);
+    }
+  };
+
+  const disconnectInstagram = async () => {
+    if (!confirm("Deseja realmente desconectar sua conta do Instagram?")) return;
+    setDisconnectingInstagram(true);
+    try {
+      const res = await fetch("/api/auth/instagram", { method: "DELETE" });
+      if (res.ok) {
+        setInstagramStatus({ connected: false });
+        setInstagramMessage("Instagram desconectado.");
+        await fetchProfiles();
+        setTimeout(() => setInstagramMessage(""), 3000);
+      }
+    } catch {
+      setInstagramMessage("Erro ao desconectar.");
+      setTimeout(() => setInstagramMessage(""), 3000);
+    } finally {
+      setDisconnectingInstagram(false);
     }
   };
 
@@ -109,6 +193,88 @@ export default function SettingsPage() {
       </p>
 
       <div className="space-y-6">
+        {/* Instagram OAuth Connection */}
+        <section className="p-6 rounded-lg border border-[var(--border)] bg-[var(--card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <span
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+              style={{
+                background: "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+              }}
+            >
+              IG
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold">Instagram</h2>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Conecte via OAuth para analise e publicacao
+              </p>
+            </div>
+          </div>
+
+          {loadingInstagram ? (
+            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+              <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+              Verificando conexao...
+            </div>
+          ) : instagramStatus.connected ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-sm font-medium">
+                  Conectada como @{instagramStatus.username}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="p-3 rounded-lg bg-[var(--secondary)]">
+                  <span className="block text-xs text-[var(--muted-foreground)]">Seguidores</span>
+                  <span className="font-semibold">
+                    {instagramStatus.followers_count?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className="p-3 rounded-lg bg-[var(--secondary)]">
+                  <span className="block text-xs text-[var(--muted-foreground)]">Token expira em</span>
+                  <span className={`font-semibold ${(instagramStatus.expires_in_days ?? 0) < 7 ? "text-red-500" : ""}`}>
+                    {instagramStatus.expires_in_days != null
+                      ? `${instagramStatus.expires_in_days} dias`
+                      : "N/A"}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={disconnectInstagram}
+                disabled={disconnectingInstagram}
+                className="px-4 py-2 rounded-lg bg-red-500/10 text-red-500 text-sm hover:bg-red-500/20 transition disabled:opacity-50"
+              >
+                {disconnectingInstagram ? "Desconectando..." : "Desconectar Instagram"}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-gray-400" />
+                <span className="text-sm text-[var(--muted-foreground)]">Nao conectada</span>
+              </div>
+              <button
+                onClick={connectInstagram}
+                disabled={connectingInstagram}
+                className="px-5 py-2.5 rounded-lg text-white text-sm font-medium transition disabled:opacity-50"
+                style={{
+                  background: "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+                }}
+              >
+                {connectingInstagram ? "Redirecionando..." : "Conectar Instagram"}
+              </button>
+            </div>
+          )}
+
+          {instagramMessage && (
+            <p className={`mt-3 text-sm ${instagramMessage.includes("sucesso") || instagramMessage.includes("conectado") ? "text-green-600" : "text-red-500"}`}>
+              {instagramMessage}
+            </p>
+          )}
+        </section>
+
         <section className="p-6 rounded-lg border border-[var(--border)] bg-[var(--card)]">
           <h2 className="text-lg font-semibold mb-4">Perfis Conectados</h2>
           <p className="text-sm text-[var(--muted-foreground)] mb-4">
@@ -249,7 +415,13 @@ export default function SettingsPage() {
           <div className="space-y-2">
             {[
               { name: "OpenAI", status: "Configurada", active: true },
-              { name: "Instagram Graph API", status: "Nao configurada", active: false },
+              {
+                name: "Instagram Graph API",
+                status: instagramStatus.connected
+                  ? `Conectada (@${instagramStatus.username})`
+                  : "Nao configurada",
+                active: instagramStatus.connected,
+              },
               { name: "YouTube Data API", status: "Nao configurada", active: false },
               { name: "Google Trends", status: "Disponivel (sem chave)", active: true },
             ].map((api) => (
