@@ -13,7 +13,7 @@ sqlalchemy>=2.0.0
 # Supabase
 supabase==2.12.0
 
-# Redis
+# Redis (client para cache)
 redis==5.2.1
 
 # HTTP Client
@@ -22,18 +22,8 @@ httpx==0.28.1
 # Google Trends
 pytrends==4.9.2
 
-# Data Processing
-pandas==2.2.3
-
-# PDF Generation
-reportlab==4.2.5
-weasyprint==63.1
-
 # Email
 resend==2.7.0
-
-# Celery (task queue)
-celery[redis]==5.4.0
 
 # Testing
 pytest==8.3.4
