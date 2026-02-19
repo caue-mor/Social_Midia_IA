@@ -61,6 +61,11 @@ app.include_router(settings_router.router, prefix="/api/v1/settings", tags=["Set
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["Webhooks"])
 
 
+@app.get("/")
+async def root():
+    return {"service": "agentesocial-api", "version": "0.1.0"}
+
+
 @app.get("/health")
 async def health():
     checks = {"api": "healthy"}
@@ -69,7 +74,8 @@ async def health():
         supabase = get_supabase()
         supabase.table("social_midia_profiles").select("id").limit(1).execute()
         checks["supabase"] = "healthy"
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Supabase health check failed: {e}")
         checks["supabase"] = "unhealthy"
     return {"status": "healthy", "service": "agentesocial-api", "version": "0.1.0", "checks": checks}
 
