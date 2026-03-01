@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # YouTube Data API
     YOUTUBE_API_KEY: str = ""
 
+    # Research APIs (opcionais — degradacao graciosa)
+    TAVILY_API_KEY: str = ""
+    APIFY_API_TOKEN: str = ""
+
     # Email (Resend)
     RESEND_API_KEY: str = ""
     EMAIL_FROM: str = "noreply@agentesocial.com"

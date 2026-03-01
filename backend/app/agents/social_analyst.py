@@ -5,6 +5,8 @@ from app.tools.instagram_tools import get_instagram_tools
 from app.tools.youtube_tools import get_youtube_tools
 from app.tools.trends_tools import get_trends_tools
 from app.tools.supabase_tools import get_supabase_tools
+from app.tools.research_tools import get_research_tools
+from app.tools.scraping_tools import get_scraping_tools
 from app.agents.memory_config import create_db, create_memory_manager
 
 
@@ -53,6 +55,16 @@ def create_social_analyst() -> Agent:
             "- Identifique gaps e oportunidades",
             "- Sugira acoes concretas para melhorar posicionamento",
             "",
+            "## Pesquisa Real (OBRIGATORIO)",
+            "ANTES de responder qualquer analise, use as ferramentas de pesquisa:",
+            "- web_search() para pesquisar tendencias atuais do nicho",
+            "- scrape_instagram_profile(username) para analisar perfis publicos de concorrentes (sem API key)",
+            "- search_trending_content(topic, platform) para descobrir o que esta bombando",
+            "- analyze_competitor_page(url) para analise detalhada de paginas publicas",
+            "- scrape_tiktok_trending(keyword) para tendencias no TikTok",
+            "- scrape_youtube_trending(topic) para videos trending no YouTube",
+            "Essas ferramentas funcionam SEM API keys e fornecem dados reais da web.",
+            "",
             "## Quando APIs nao estao configuradas",
             "Se as ferramentas de Instagram ou YouTube retornarem que a API nao esta configurada:",
             "- Informe o usuario de forma amigavel que a integracao precisa ser configurada",
@@ -77,6 +89,8 @@ def create_social_analyst() -> Agent:
             *get_youtube_tools(),
             *get_trends_tools(),
             *get_supabase_tools(),
+            *get_research_tools(),
+            *get_scraping_tools(),
             DuckDuckGoTools(),
         ],
         markdown=True,

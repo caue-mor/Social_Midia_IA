@@ -3,6 +3,7 @@ from agno.models.openai import OpenAIResponses
 from app.tools.memory_tools import get_memory_tools
 from app.tools.supabase_tools import get_supabase_tools
 from app.tools.books_tools import get_books_tools
+from app.tools.research_tools import get_research_tools
 from app.agents.memory_config import create_db, create_memory_manager
 
 
@@ -108,16 +109,22 @@ def create_content_writer() -> Agent:
             "- YouTube: SEO no titulo, descricao longa com timestamps, tags relevantes.",
             "- Facebook: tom conversacional, perguntas, compartilhavel, emojis moderados.",
             "",
+            "===== PESQUISA ANTES DE CRIAR =====",
+            "- ANTES de criar conteudo, use web_search() para pesquisar dados recentes sobre o topico.",
+            "- Use search_trending_content() para descobrir angles virais e tendencias atuais.",
+            "- Use extract_article() para analisar artigos relevantes e extrair dados/estatisticas reais.",
+            "- Nunca gere conteudo baseado apenas em conhecimento interno — valide com dados reais.",
+            "",
             "===== REGRAS DE QUALIDADE =====",
             "- Nunca gere conteudo generico. Sempre personalize ao brand voice.",
-            "- Inclua pelo menos 1 dado/estatistica quando possivel.",
+            "- Inclua pelo menos 1 dado/estatistica quando possivel (preferencialmente dados REAIS pesquisados).",
             "- Cada CTA deve ser especifico (nao apenas 'comente', mas 'comente qual desses voce ja testou').",
             "- Varie hooks entre perguntas, afirmacoes ousadas, numeros e storytelling.",
             "- Sempre indique o formato exato na resposta (ex: '## Carrossel - 7 Slides').",
             "",
             "Responda SEMPRE em portugues brasileiro.",
         ],
-        tools=[*get_memory_tools(), *get_supabase_tools(), *get_books_tools()],
+        tools=[*get_memory_tools(), *get_supabase_tools(), *get_books_tools(), *get_research_tools()],
         markdown=True,
         store_history_messages=True,
         add_history_to_context=True,

@@ -1,9 +1,10 @@
 from agno.agent import Agent
 from agno.models.openai import OpenAIResponses
-from agno.tools.duckduckgo import DuckDuckGoTools
 from app.tools.instagram_tools import get_instagram_tools
 from app.tools.trends_tools import get_trends_tools
 from app.tools.supabase_tools import get_supabase_tools
+from app.tools.research_tools import get_research_tools
+from app.tools.scraping_tools import get_scraping_tools
 from app.agents.memory_config import create_db, create_memory_manager
 
 
@@ -69,6 +70,14 @@ def create_hashtag_hunter() -> Agent:
             "- Priorize hashtags profissionais e de industria",
             "- Siga hashtags do seu nicho para monitorar tendencias",
             "",
+            "## Pesquisa Real de Hashtags",
+            "ANTES de recomendar hashtags, use suas ferramentas de pesquisa:",
+            "- web_search() para pesquisar hashtags trending do nicho",
+            "- search_trending_content(topic, platform) para descobrir hashtags virais",
+            "- scrape_instagram_profile(username) para ver hashtags usadas por concorrentes",
+            "- scrape_tiktok_trending(keyword) para hashtags trending no TikTok",
+            "Nunca recomende hashtags baseado apenas em conhecimento interno.",
+            "",
             "## Analise de Hashtags",
             "Ao analisar uma hashtag, forneca:",
             "1. Volume estimado de posts",
@@ -92,7 +101,8 @@ def create_hashtag_hunter() -> Agent:
             *get_instagram_tools(),
             *get_trends_tools(),
             *get_supabase_tools(),
-            DuckDuckGoTools(),
+            *get_research_tools(),
+            *get_scraping_tools(),
         ],
         markdown=True,
         store_history_messages=True,
