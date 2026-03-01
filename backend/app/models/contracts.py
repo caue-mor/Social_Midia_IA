@@ -297,5 +297,7 @@ class PipelineResult(BaseModel):
     content_results: list[dict] = Field(default_factory=list)
     script_results: list[dict] = Field(default_factory=list)
     quality_report: Optional[dict] = None
+    content_piece_ids: list[str] = Field(default_factory=list)
+    calendar_event_ids: list[str] = Field(default_factory=list)
     created_at: Optional[str] = None
     completed_at: Optional[str] = None

@@ -7,7 +7,7 @@ Cada step usa validate_and_retry para garantir output JSON estruturado.
 import asyncio
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Awaitable, Callable, Optional
 
 from app.agents.calendar_planner import create_calendar_planner
@@ -209,6 +209,7 @@ class PipelineService:
         result.version = version
 
         await self._persist(result)
+        await self._persist_content_and_calendar(result, plan_slots)
 
         return result
 
@@ -253,3 +254,107 @@ class PipelineService:
             logger.info("Pipeline %s persisted (version=%d)", result.pipeline_id, result.version)
         except Exception as e:
             logger.error("Failed to persist pipeline result: %s", e)
+
+    async def _persist_content_and_calendar(
+        self, result: PipelineResult, plan_slots: list[dict]
+    ) -> None:
+        """Persiste content_pieces e calendar_events derivados do pipeline.
+
+        Insere um content_piece para cada content_result e um calendar_event
+        correspondente linkado via content_id. Falhas sao logadas mas NAO
+        quebram o pipeline (resultado ja foi salvo em pipeline_runs).
+        """
+        if not result.content_results:
+            return
+
+        try:
+            from app.database.supabase_client import get_supabase_admin
+            supabase = get_supabase_admin()
+        except Exception as e:
+            logger.warning("Could not get supabase client for content/calendar persist: %s", e)
+            return
+
+        for i, content in enumerate(result.content_results):
+            slot = plan_slots[i] if i < len(plan_slots) else {}
+            content_piece_id = str(uuid.uuid4())
+
+            # --- Insert content_piece ---
+            try:
+                body = content.get("body") or ""
+                if not body:
+                    hook = content.get("hook", "")
+                    caption = content.get("caption", "")
+                    body = f"{hook}\n\n{caption}".strip() if hook or caption else ""
+
+                metadata = {
+                    "hook": content.get("hook", ""),
+                    "cta": content.get("cta", ""),
+                    "slides": content.get("slides", []),
+                    "story_frames": content.get("story_frames", []),
+                    "thread_tweets": content.get("thread_tweets", []),
+                    "word_count": content.get("word_count", 0),
+                    "pipeline_run_id": result.pipeline_id,
+                }
+
+                supabase.table(TABLES["content_pieces"]).insert({
+                    "id": content_piece_id,
+                    "user_id": result.user_id,
+                    "content_type": content.get("content_type", ""),
+                    "platform": content.get("platform", ""),
+                    "title": content.get("title", ""),
+                    "body": body,
+                    "caption": content.get("caption", ""),
+                    "hashtags": content.get("hashtags", []),
+                    "visual_suggestion": content.get("visual_suggestion", ""),
+                    "status": "draft",
+                    "metadata": metadata,
+                }).execute()
+
+                result.content_piece_ids.append(content_piece_id)
+                logger.info("Content piece %s created (slot %d)", content_piece_id, i)
+            except Exception as e:
+                logger.warning("Failed to insert content_piece for slot %d: %s", i, e)
+                continue  # skip calendar event if content_piece failed
+
+            # --- Insert calendar_event ---
+            try:
+                scheduled_at = None
+                sched_date = slot.get("scheduled_date", "")
+                sched_time = slot.get("scheduled_time", "")
+                if sched_date and sched_time:
+                    scheduled_at = f"{sched_date}T{sched_time}"
+                elif sched_date:
+                    scheduled_at = f"{sched_date}T09:00:00"
+
+                if not scheduled_at:
+                    fallback_dt = datetime.utcnow().replace(
+                        hour=9, minute=0, second=0, microsecond=0
+                    )
+                    fallback_dt = fallback_dt + timedelta(hours=i * 6)
+                    scheduled_at = fallback_dt.isoformat()
+
+                title = slot.get("title", "")
+                if not title:
+                    plat = slot.get("platform", content.get("platform", ""))
+                    ctype = slot.get("content_type", content.get("content_type", ""))
+                    title = f"{plat} - {ctype}".strip(" -")
+
+                notes = slot.get("notes") or slot.get("topic", "")
+
+                calendar_event_id = str(uuid.uuid4())
+
+                supabase.table(TABLES["content_calendar"]).insert({
+                    "id": calendar_event_id,
+                    "user_id": result.user_id,
+                    "title": title,
+                    "content_id": content_piece_id,
+                    "platform": slot.get("platform", content.get("platform", "")),
+                    "scheduled_at": scheduled_at,
+                    "status": "scheduled",
+                    "notes": notes,
+                }).execute()
+
+                result.calendar_event_ids.append(calendar_event_id)
+                logger.info("Calendar event %s created for content %s", calendar_event_id, content_piece_id)
+            except Exception as e:
+                logger.warning("Failed to insert calendar_event for slot %d: %s", i, e)
