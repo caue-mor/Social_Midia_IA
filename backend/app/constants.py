@@ -17,4 +17,5 @@ TABLES: dict[str, str] = {
     "content_history": "social_midia_content_history",
     "brand_voice_profiles": "social_midia_brand_voice_profiles",
     "competitor_tracking": "social_midia_competitor_tracking",
+    "pipeline_runs": "social_midia_pipeline_runs",
 }

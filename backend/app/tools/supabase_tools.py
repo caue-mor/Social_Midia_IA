@@ -34,6 +34,7 @@ def insert_record(table_name: str, data: dict) -> str:
         TABLES["hashtag_research"], TABLES["podcast_episodes"], TABLES["reports"],
         TABLES["analytics_snapshots"], TABLES["notifications"], TABLES["content_history"],
         TABLES["brand_voice_profiles"], TABLES["competitor_tracking"],
+        TABLES["pipeline_runs"],
     ]
     if table_name not in writable_tables:
         return f"Tabela '{table_name}' nao permitida para insercao."
