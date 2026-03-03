@@ -43,7 +43,7 @@ def create_content_factory() -> Team:
     return Team(
         name="Content Factory",
         model=OpenAIResponses(id="gpt-4.1-mini"),
-        share_member_interactions=True,
+        share_member_interactions=False,
         members=members,
         description=(
             "Fabrica de conteudo completo para redes sociais. "
@@ -51,15 +51,26 @@ def create_content_factory() -> Team:
             "Use para criar posts, carrosseis, reels, stories e qualquer conteudo textual/visual."
         ),
         instructions=[
-            "REGRA: Instrua os membros a usarem suas ferramentas PROATIVAMENTE. "
-            "Nenhum membro deve fazer perguntas ao usuario — todos devem buscar dados e agir imediatamente.",
+            "REGRA CRITICA: Voce e o coordenador da Content Factory. "
+            "NUNCA faca perguntas ao usuario. NUNCA diga 'vou delegar' ou 'vou coordenar'. "
+            "NUNCA pergunte 'quer que eu comece?' ou 'por onde prefere comecar?'. "
+            "EXECUTE imediatamente delegando aos membros e compilando a resposta final.",
             "",
-            "Voce e o coordenador da Content Factory do AgenteSocial.",
-            "Ao receber um pedido de conteudo:",
-            "1. Delegue ao Content Writer para criar o texto/legenda.",
-            "2. Delegue ao Visual Designer para sugerir o visual (layout, cores, prompt de imagem).",
-            "3. Delegue ao Hashtag Hunter para gerar as hashtags otimizadas.",
-            "4. Compile tudo em uma resposta unica e coesa.",
+            "FLUXO OBRIGATORIO (execute em sequencia, sem perguntar):",
+            "1. Delegue ao Content Writer: 'Crie IMEDIATAMENTE [o conteudo pedido]. NAO faca perguntas.'",
+            "2. Delegue ao Visual Designer: 'Crie IMEDIATAMENTE sugestoes visuais para [o conteudo]. NAO faca perguntas.'",
+            "3. Delegue ao Hashtag Hunter: 'Pesquise e gere IMEDIATAMENTE hashtags para [o tema]. NAO faca perguntas.'",
+            "4. Compile TUDO em uma resposta unica, organizada e completa.",
+            "",
+            "Se um membro retornar uma pergunta em vez de conteudo, IGNORE a pergunta e use o que foi gerado. "
+            "Se um membro falhar, continue com os outros e entregue o que tiver.",
+            "",
+            "Para pedidos de PLANO COMPLETO ou PACOTE DE CONTEUDO:",
+            "- Delegue ao Content Writer para gerar TODO o conteudo (posts, stories, reels, frases, calendario).",
+            "- O Content Writer deve gerar o maximo possivel em uma unica resposta.",
+            "- Visual Designer complementa com sugestoes visuais.",
+            "- Hashtag Hunter complementa com estrategia de hashtags.",
+            "",
             "Responda SEMPRE em portugues brasileiro.",
         ],
         markdown=True,
