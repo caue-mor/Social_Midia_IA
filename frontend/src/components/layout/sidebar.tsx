@@ -8,6 +8,7 @@ const navItems = [
   { label: "Dashboard", href: "/", icon: "🏠" },
   { label: "Chat IA", href: "/chat", icon: "💬" },
   { label: "Conteudo", href: "/content", icon: "✍️" },
+  { label: "Plano de Acao", href: "/plano-acao", icon: "🎯" },
   { label: "Analise", href: "/analysis", icon: "📊" },
   { label: "Calendario", href: "/calendar", icon: "📅" },
   { label: "Relatorios", href: "/reports", icon: "📈" },
