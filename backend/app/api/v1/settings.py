@@ -1,9 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user
 from app.models.schemas import SocialProfileCreate
 from app.constants import TABLES
+from app.database.supabase_client import get_supabase_admin
 
 router = APIRouter()
+
+
+def _get_admin():
+    return get_supabase_admin()
 
 
 @router.post("/profiles")
@@ -11,8 +16,7 @@ async def add_social_profile(
     request: SocialProfileCreate,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    supabase = _get_admin()
     data = {
         "user_id": user["id"],
         "platform": request.platform,
@@ -20,7 +24,10 @@ async def add_social_profile(
         "access_token": request.access_token,
         "platform_user_id": request.platform_user_id,
     }
-    result = supabase.table(TABLES["profiles"]).insert(data).execute()
+    try:
+        result = supabase.table(TABLES["profiles"]).insert(data).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add profile: {e}")
     return {"profile": result.data[0] if result.data else None}
 
 
@@ -28,8 +35,7 @@ async def add_social_profile(
 async def list_social_profiles(
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    supabase = _get_admin()
     result = supabase.table(TABLES["profiles"]).select("*").eq("user_id", user["id"]).execute()
     return {"profiles": result.data}
 
@@ -39,8 +45,7 @@ async def remove_social_profile(
     profile_id: str,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    supabase = _get_admin()
     supabase.table(TABLES["profiles"]).delete().eq("id", profile_id).eq("user_id", user["id"]).execute()
     return {"deleted": True}
 
@@ -51,8 +56,7 @@ async def save_brand_voice(
     request: dict,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    supabase = _get_admin()
     data = {
         "user_id": user["id"],
         "name": request.get("name", "Default"),
@@ -64,7 +68,10 @@ async def save_brand_voice(
     }
     # Deactivate existing
     supabase.table(TABLES["brand_voice_profiles"]).update({"is_active": False}).eq("user_id", user["id"]).execute()
-    result = supabase.table(TABLES["brand_voice_profiles"]).insert(data).execute()
+    try:
+        result = supabase.table(TABLES["brand_voice_profiles"]).insert(data).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save brand voice: {e}")
     return {"brand_voice": result.data[0] if result.data else None}
 
 
@@ -72,7 +79,6 @@ async def save_brand_voice(
 async def get_brand_voice(
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    supabase = _get_admin()
     result = supabase.table(TABLES["brand_voice_profiles"]).select("*").eq("user_id", user["id"]).eq("is_active", True).limit(1).execute()
     return {"brand_voice": result.data[0] if result.data else None}

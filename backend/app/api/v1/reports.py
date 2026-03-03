@@ -14,7 +14,7 @@ async def generate_report(
     user: dict = Depends(get_current_user),
 ):
     from app.agents.team import get_team_response
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
 
     sections_str = ", ".join(request.include_sections)
     prompt = (
@@ -64,7 +64,7 @@ async def list_reports(
     user: dict = Depends(get_current_user),
     report_type: str = None,
 ):
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
     query = supabase.table(TABLES["reports"]).select("*").eq("user_id", user["id"])
     if report_type:
@@ -78,7 +78,7 @@ async def get_report(
     report_id: str,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
     try:
         result = (
@@ -104,7 +104,7 @@ async def delete_report(
     report_id: str,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
     try:
         result = (

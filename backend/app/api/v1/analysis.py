@@ -59,7 +59,7 @@ async def get_viral_content(
     platform: str = None,
     niche: str = None,
 ):
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
     query = supabase.table(TABLES["viral_content"]).select("*").gte("virality_score", 70)
     if platform:
@@ -92,7 +92,7 @@ async def analyze_competitor(
 
     # Save competitor tracking data
     try:
-        from app.database.supabase_client import get_supabase
+        from app.database.supabase_client import get_supabase_admin as get_supabase
         supabase = get_supabase()
         for handle in request.competitor_handles:
             supabase.table(TABLES["competitor_tracking"]).upsert(

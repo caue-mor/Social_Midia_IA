@@ -81,7 +81,7 @@ async def get_content_library(
     content_type: str = None,
     platform: str = None,
 ):
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
     query = supabase.table(TABLES["content_pieces"]).select("*").eq("user_id", user["id"])
     if content_type:
@@ -103,7 +103,7 @@ async def update_content(
     user: dict = Depends(get_current_user),
 ):
     """Update an existing content piece. Only the owner can update."""
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
 
     # Verify ownership
@@ -149,7 +149,7 @@ async def delete_content(
     user: dict = Depends(get_current_user),
 ):
     """Delete a content piece. Only the owner can delete."""
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
 
     # Verify ownership
@@ -183,7 +183,7 @@ async def publish_content(
     user: dict = Depends(get_current_user),
 ):
     """Mark a content piece as published with current timestamp."""
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
 
     # Verify ownership
@@ -228,7 +228,7 @@ async def schedule_content(
     user: dict = Depends(get_current_user),
 ):
     """Schedule a content piece for future publishing."""
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
     supabase = get_supabase()
 
     # Verify ownership
@@ -303,7 +303,7 @@ async def auto_publish_content(
     Fetches the content piece, determines the platform, calls the appropriate
     publishing tool, and updates the record status to 'published' on success.
     """
-    from app.database.supabase_client import get_supabase
+    from app.database.supabase_client import get_supabase_admin as get_supabase
 
     supabase = get_supabase()
 

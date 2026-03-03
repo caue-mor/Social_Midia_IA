@@ -41,8 +41,8 @@ async def create_event(
     request: CalendarEventCreate,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    from app.database.supabase_client import get_supabase_admin
+    supabase = get_supabase_admin()
     data = {
         "user_id": user["id"],
         "title": request.title,
@@ -62,8 +62,8 @@ async def list_events(
     month: str = None,
     platform: str = None,
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    from app.database.supabase_client import get_supabase_admin
+    supabase = get_supabase_admin()
     query = supabase.table(TABLES["content_calendar"]).select("*").eq("user_id", user["id"])
     if platform:
         query = query.eq("platform", platform)
@@ -88,8 +88,8 @@ async def update_event(
     status: str = None,
     scheduled_at: str = None,
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    from app.database.supabase_client import get_supabase_admin
+    supabase = get_supabase_admin()
     data = {}
     if status:
         data["status"] = status
@@ -104,8 +104,8 @@ async def delete_event(
     event_id: str,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    from app.database.supabase_client import get_supabase_admin
+    supabase = get_supabase_admin()
     try:
         result = (
             supabase.table(TABLES["content_calendar"])
@@ -302,8 +302,8 @@ async def list_automation_rules(
     user: dict = Depends(get_current_user),
     is_active: Optional[bool] = None,
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    from app.database.supabase_client import get_supabase_admin
+    supabase = get_supabase_admin()
     query = supabase.table(TABLES["automation_rules"]).select("*").eq("user_id", user["id"])
     if is_active is not None:
         query = query.eq("is_active", is_active)
@@ -316,8 +316,8 @@ async def create_automation_rule(
     request: AutomationRuleCreate,
     user: dict = Depends(get_current_user),
 ):
-    from app.database.supabase_client import get_supabase
-    supabase = get_supabase()
+    from app.database.supabase_client import get_supabase_admin
+    supabase = get_supabase_admin()
     data = {
         "user_id": user["id"],
         "name": request.name,
