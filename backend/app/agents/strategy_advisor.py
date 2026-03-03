@@ -11,7 +11,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_strategy_advisor() -> Agent:
     return Agent(
         name="Strategy Advisor",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Consultor estrategico de redes sociais",
         description="Define estrategias de crescimento, posicionamento e branding para redes sociais. Use para consultoria estrategica e planejamento de longo prazo.",
         instructions=[

@@ -8,7 +8,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_video_script_writer() -> Agent:
     return Agent(
         name="Video Script Writer",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Roteirista de videos para redes sociais",
         description="Cria roteiros para Reels, TikTok, YouTube Shorts e videos longos. Use para roteiros de video em qualquer formato.",
         instructions=[

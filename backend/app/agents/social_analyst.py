@@ -13,7 +13,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_social_analyst() -> Agent:
     return Agent(
         name="Social Media Analyst",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Analista de redes sociais",
         description="Analisa perfis, metricas, engajamento e desempenho em redes sociais. Use para analise de perfis Instagram e YouTube, metricas de engajamento, benchmarks e tendencias de mercado.",
         instructions=[

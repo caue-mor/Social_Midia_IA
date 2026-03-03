@@ -8,7 +8,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_report_generator() -> Agent:
     return Agent(
         name="Report Generator",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Gerador de relatorios de performance e analise de redes sociais",
         description=(
             "Gera relatorios detalhados de performance, crescimento e ROI para redes sociais. "

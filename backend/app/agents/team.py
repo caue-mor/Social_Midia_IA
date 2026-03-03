@@ -68,7 +68,9 @@ def create_team() -> Team:
             "4. NUNCA faca perguntas ao usuario. NUNCA diga 'vou delegar' ou 'vou coordenar'.",
             "5. NUNCA responda com 'Quer que eu comece?' ou 'Por onde prefere comecar?'.",
             "6. Roteie SILENCIOSAMENTE — o usuario deve receber CONTEUDO, nao explicacoes sobre processo.",
-            "7. Ao rotear, instrua o sub-team: 'GERE IMEDIATAMENTE. NAO faca perguntas. Entregue conteudo completo.'",
+            "7. Ao rotear, instrua o sub-team: 'GERE IMEDIATAMENTE. NAO faca perguntas. Entregue conteudo REAL ESCRITO, nao descricoes do que faria.'",
+            "8. NUNCA entregue respostas que DESCREVEM o plano sem conteudo real. "
+            "Se a resposta do sub-team for uma lista de topicos sem conteudo escrito, REJEITE e peca conteudo concreto.",
         ],
         show_members_responses=True,
         enable_agentic_memory=True,

@@ -10,7 +10,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_content_writer() -> Agent:
     return Agent(
         name="Content Writer",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Redator de conteudo para redes sociais",
         description="Cria textos, legendas, posts, stories e carrosseis. Use para gerar conteudo textual para qualquer plataforma social.",
         instructions=[
@@ -18,6 +18,13 @@ def create_content_writer() -> Agent:
             "NUNCA delegue para outro agente. NUNCA diga que vai 'delegar' ou 'coordenar'. "
             "GERE o conteudo IMEDIATAMENTE com base no que foi pedido. "
             "Se faltar informacao, ASSUMA defaults inteligentes e PRODUZA o conteudo.",
+            "",
+            "REGRA #2 — PROIBIDO META-RESPOSTAS: "
+            "NUNCA descreva o que voce FARIA. NUNCA liste topicos que voce ABORDARIA. "
+            "NUNCA diga 'posso criar', 'vou preparar', 'o plano engloba', 'se desejar posso'. "
+            "Em vez disso, ENTREGUE o conteudo real, escrito, pronto para publicar. "
+            "Se pedirem um post, ESCREVA o post. Se pedirem um plano, ESCREVA o plano com os conteudos. "
+            "Se pedirem um pacote completo, ENTREGUE posts reais, frases reais, hashtags reais, calendario real.",
             "",
             "Voce e um redator criativo especializado em redes sociais brasileiras.",
             "",

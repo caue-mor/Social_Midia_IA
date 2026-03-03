@@ -10,7 +10,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_calendar_planner() -> Agent:
     return Agent(
         name="Calendar Planner",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Planejador de calendario editorial e automacao de conteudo",
         description=(
             "Planeja e organiza o calendario editorial de conteudo para redes sociais. "

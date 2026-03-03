@@ -9,7 +9,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_visual_designer() -> Agent:
     return Agent(
         name="Visual Designer",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Designer visual para redes sociais",
         description="Sugere layouts, paletas, tipografia e gera prompts visuais para imagens. Use para design visual de posts, stories e thumbnails.",
         instructions=[

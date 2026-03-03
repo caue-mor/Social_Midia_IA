@@ -11,7 +11,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_hashtag_hunter() -> Agent:
     return Agent(
         name="Hashtag Hunter",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Especialista em hashtags e descoberta",
         description="Pesquisa, analisa e recomenda hashtags otimizadas por nicho e plataforma. Use para estrategia de hashtags e descoberta de conteudo.",
         instructions=[

@@ -9,7 +9,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_podcast_creator() -> Agent:
     return Agent(
         name="Podcast Creator",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Criador de podcasts e conteudo de audio",
         description="Cria roteiros de podcast, show notes, transcreve audios e sugere clips para reaproveitamento. Use para tudo relacionado a podcasts e audio.",
         instructions=[

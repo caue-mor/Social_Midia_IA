@@ -11,7 +11,7 @@ from app.agents.memory_config import create_db, create_memory_manager
 def create_viral_tracker() -> Agent:
     return Agent(
         name="Viral Content Tracker",
-        model=OpenAIResponses(id="gpt-4.1-nano"),
+        model=OpenAIResponses(id="gpt-4.1-mini"),
         role="Rastreador de conteudo viral",
         description="Monitora e identifica conteudo viral, tendencias e oportunidades de momento. Use para encontrar trends, conteudos virais e oportunidades de timing.",
         instructions=[
