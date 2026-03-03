@@ -78,10 +78,32 @@ function SettingsContent() {
     }
   }, []);
 
+  const fetchBrandVoice = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings/brand-voice");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.brand_voice) {
+          const bv = data.brand_voice;
+          setBrandVoice({
+            name: bv.name || "",
+            tone: bv.tone || "",
+            vocabulary: Array.isArray(bv.vocabulary) ? bv.vocabulary.join(", ") : bv.vocabulary || "",
+            avoid_words: Array.isArray(bv.avoid_words) ? bv.avoid_words.join(", ") : bv.avoid_words || "",
+            target_audience: bv.target_audience || "",
+          });
+        }
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
   useEffect(() => {
     fetchProfiles();
     fetchInstagramStatus();
-  }, [fetchInstagramStatus]);
+    fetchBrandVoice();
+  }, [fetchInstagramStatus, fetchBrandVoice]);
 
   // Handle OAuth callback query params
   useEffect(() => {
